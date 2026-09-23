@@ -26,7 +26,7 @@ export function App() {
     return (
       <div className="splash">
         <img className="logo" src="/icon-512.png" alt="" />
-        <p>Сышэн</p>
+        <p>Sisheng</p>
       </div>
     )
   }
@@ -39,7 +39,7 @@ export function App() {
         <div className="brand">
           <img className="logo" src="/icon-512.png" alt="" />
           <div>
-            <b>Сышэн</b>
+            <b>Sisheng</b>
             <small>四声</small>
           </div>
         </div>

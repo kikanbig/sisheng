@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Сышэн — китайский',
-        short_name: 'Сышэн',
+        name: 'Sisheng — 四声',
+        short_name: 'Sisheng',
         description: 'Карточки, тоны и живое произношение путунхуа',
         lang: 'ru',
         start_url: '/',
