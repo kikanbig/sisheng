@@ -25,7 +25,7 @@ export function App() {
   if (!store.ready) {
     return (
       <div className="splash">
-        <div className="seal">声</div>
+        <img className="logo" src="/icon-512.png" alt="" />
         <p>Сышэн</p>
       </div>
     )
@@ -37,7 +37,7 @@ export function App() {
     <div className="app">
       <header className="topbar">
         <div className="brand">
-          <span className="seal">声</span>
+          <img className="logo" src="/icon-512.png" alt="" />
           <div>
             <b>Сышэн</b>
             <small>四声</small>

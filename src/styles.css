@@ -89,17 +89,12 @@ h2 { font-size: 1.05rem; letter-spacing: -0.03em; }
 .brand { display: flex; align-items: center; gap: 10px; }
 .brand b { display: block; font-size: 1.05rem; letter-spacing: -0.04em; }
 .brand small { color: var(--muted); letter-spacing: 0.14em; }
-.seal {
+.logo {
   width: 42px;
   height: 42px;
-  display: grid;
-  place-items: center;
-  border: 1.5px solid var(--seal);
-  color: var(--seal);
-  border-radius: 50%;
-  font-family: var(--han);
-  font-size: 22px;
-  transform: rotate(-8deg);
+  border-radius: 12px;
+  display: block;
+  object-fit: cover;
 }
 .splash {
   min-height: 100vh;
@@ -108,7 +103,7 @@ h2 { font-size: 1.05rem; letter-spacing: -0.03em; }
   align-content: center;
   gap: 12px;
 }
-.splash .seal { width: 92px; height: 92px; font-size: 48px; }
+.splash .logo { width: 112px; height: 112px; border-radius: 28px; }
 .screen { padding: 8px 20px 24px; display: grid; gap: 18px; }
 .eyebrow {
   color: var(--cinnabar);
