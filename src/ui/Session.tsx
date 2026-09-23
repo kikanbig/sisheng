@@ -30,6 +30,9 @@ export function Session() {
   const [revealed, setRevealed] = useState(false)
   const [picked, setPicked] = useState<number | null>(null)
   const [hint, setHint] = useState('')
+  const [dx, setDx] = useState(0)
+  const drag = useRef<{ x: number; y: number; id: number; active: boolean } | null>(null)
+  const swiped = useRef(false)
   const voices = useRef(new Map<string, string>())
 
   const item = session && session.index < session.items.length ? session.items[session.index] : null
@@ -41,6 +44,8 @@ export function Session() {
     setRevealed(false)
     setPicked(null)
     setHint('')
+    setDx(0)
+    drag.current = null
   }
 
   useEffect(() => {
@@ -138,6 +143,46 @@ export function Session() {
     commit(correct ? 'good' : 'again')
   }
 
+  const canSwipe = !cardItem.teach && round.mode !== 'tones' && revealed
+
+  function swipeStart(event: React.PointerEvent) {
+    if (!canSwipe || !event.isPrimary) return
+    drag.current = { x: event.clientX, y: event.clientY, id: event.pointerId, active: false }
+  }
+
+  function swipeMove(event: React.PointerEvent) {
+    const state = drag.current
+    if (!state) return
+    const moveX = event.clientX - state.x
+    const moveY = event.clientY - state.y
+    if (!state.active) {
+      if (Math.abs(moveX) < 14 || Math.abs(moveX) < Math.abs(moveY) * 1.2) return
+      state.active = true
+      try {
+        event.currentTarget.setPointerCapture(state.id)
+      } catch {
+        // указатель уже отпущен — жест всё равно продолжаем
+      }
+    }
+    setDx(moveX)
+  }
+
+  function swipeEnd() {
+    const state = drag.current
+    drag.current = null
+    if (!state?.active) return
+    swiped.current = true
+    if (dx > 88) {
+      commit('good')
+      return
+    }
+    if (dx < -88) {
+      commit('again')
+      return
+    }
+    setDx(0)
+  }
+
   keys.current = (event) => {
     if (event.metaKey || event.ctrlKey || event.altKey) return
     if (event.key === 'Escape') store.endSession()
@@ -152,6 +197,14 @@ export function Session() {
     if (!cardItem.teach && round.mode !== 'tones' && revealed && ['1', '2', '3', '4'].includes(event.key)) {
       event.preventDefault()
       commit(GRADES[Number(event.key) - 1].id)
+    }
+    if (canSwipe && event.key === 'ArrowRight') {
+      event.preventDefault()
+      commit('good')
+    }
+    if (canSwipe && event.key === 'ArrowLeft') {
+      event.preventDefault()
+      commit('again')
     }
   }
 
@@ -171,7 +224,30 @@ export function Session() {
       </header>
       <SpeedPicker value={store.settings.speed} onChange={(speed) => store.updateSettings({ speed })} />
 
-      <article className="study-card">
+      <article
+        className={`study-card${drag.current?.active ? ' swiping' : ''}`}
+        style={canSwipe ? { transform: `translateX(${dx}px) rotate(${dx * 0.03}deg)` } : undefined}
+        onPointerDown={swipeStart}
+        onPointerMove={swipeMove}
+        onPointerUp={swipeEnd}
+        onPointerCancel={swipeEnd}
+        onClickCapture={(event) => {
+          if (!swiped.current) return
+          swiped.current = false
+          event.preventDefault()
+          event.stopPropagation()
+        }}
+      >
+        {canSwipe && (
+          <div className="swipe-tags">
+            <span className="swipe-tag yes" style={{ opacity: Math.min(1, Math.max(0, dx) / 88) }}>
+              Помню
+            </span>
+            <span className="swipe-tag no" style={{ opacity: Math.min(1, Math.max(0, -dx) / 88) }}>
+              Снова
+            </span>
+          </div>
+        )}
         {item.teach ? (
           <Teach wordHanzi={word.hanzi} onPlay={() => play()} />
         ) : session.mode === 'tones' ? (
@@ -241,17 +317,20 @@ export function Session() {
             <p className="fine center">Выбери контур, который услышал. Значение спрятано нарочно.</p>
           )
         ) : revealed ? (
-          <div className="grades">
-            {GRADES.map((grade) => {
-              const next = reviewCard(card, grade.id)
-              return (
-                <button key={grade.id} type="button" className={`grade ${grade.id}`} onClick={() => commit(grade.id)}>
-                  <b>{grade.label}</b>
-                  <small>{formatDelay(next.due - Date.now())}</small>
-                </button>
-              )
-            })}
-          </div>
+          <>
+            <div className="grades">
+              {GRADES.map((grade) => {
+                const next = reviewCard(card, grade.id)
+                return (
+                  <button key={grade.id} type="button" className={`grade ${grade.id}`} onClick={() => commit(grade.id)}>
+                    <b>{grade.label}</b>
+                    <small>{formatDelay(next.due - Date.now())}</small>
+                  </button>
+                )
+              })}
+            </div>
+            <p className="fine center swipe-hint">Или смахни карточку: вправо — помню, влево — снова.</p>
+          </>
         ) : round.mode === 'write' ? (
           <button type="button" className="ghost" onClick={show}>
             Пока не выходит
