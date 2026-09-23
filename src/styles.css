@@ -128,25 +128,45 @@ h2 { font-size: 1.05rem; letter-spacing: -0.03em; }
   text-align: left;
   padding: 14px;
   display: grid;
-  gap: 4px;
+  gap: 3px;
+  align-content: end;
   position: relative;
-  border-radius: 20px;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 22px;
+  min-height: 158px;
+  background-size: cover;
+  background-position: center;
+  color: #33291d;
 }
 .mode small, .chip small, .fine, .pos { color: var(--muted); }
+.mode small { color: rgba(75, 62, 46, 0.78); }
+.mode::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(to top, rgba(251, 247, 238, 0.92) 0%, rgba(251, 247, 238, 0.42) 46%, rgba(251, 247, 238, 0) 72%);
+}
 .mode em {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: 10px;
+  right: 10px;
   font-style: normal;
   font-variant-numeric: tabular-nums;
-  color: var(--cinnabar);
+  color: var(--tomato-11);
   font-weight: 700;
+  font-size: 0.82rem;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(251, 247, 238, 0.82);
 }
-.mode[data-kind='read'] { background: linear-gradient(165deg, var(--pink-3), var(--sand-1) 72%); }
-.mode[data-kind='listen'] { background: linear-gradient(165deg, var(--sage-3), var(--sand-1) 72%); }
-.mode[data-kind='recall'] { background: linear-gradient(165deg, var(--amber-3), var(--sand-1) 72%); }
-.mode[data-kind='write'] { background: linear-gradient(165deg, var(--teal-3), var(--sand-1) 72%); }
-.mode[data-kind='tones'] { background: linear-gradient(165deg, var(--indigo-3), var(--sand-1) 72%); }
+.mode[data-kind='read'] { background-image: url('/art/read.webp'); }
+.mode[data-kind='listen'] { background-image: url('/art/listen.webp'); }
+.mode[data-kind='recall'] { background-image: url('/art/recall.webp'); }
+.mode[data-kind='write'] { background-image: url('/art/write.webp'); }
+.mode[data-kind='tones'] { background-image: url('/art/tones.webp'); min-height: 132px; }
+:root.dark .mode { filter: brightness(0.93) saturate(0.95); }
 .mode.on, .chip.on, .toggle.on, .speed.on { border-color: var(--ink); box-shadow: 0 0 0 1.5px var(--ink); }
 .block { border-radius: 24px; padding: 16px; display: grid; gap: 12px; }
 .block-head { display: grid; gap: 4px; }
