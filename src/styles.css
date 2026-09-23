@@ -17,7 +17,7 @@
   color-scheme: light;
   --paper: var(--sand-2);
   --paper-deep: var(--sand-4);
-  --card: color-mix(in srgb, var(--sand-1) 86%, white);
+  --card: #fbf5e9;
   --ink: var(--sand-12);
   --muted: var(--sand-11);
   --line: var(--sand-6);
@@ -117,9 +117,21 @@ h2 { font-size: 1.05rem; letter-spacing: -0.03em; }
 .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .mode:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .mode, .chip, .choice, .study-card, .block, .stat-grid article, .onboarding {
-  background: var(--card);
   border: 1px solid var(--line);
   box-shadow: var(--shadow);
+}
+.chip, .choice, .study-card, .block, .stat-grid article, .onboarding {
+  background:
+    linear-gradient(rgba(253, 249, 240, 0.58), rgba(253, 249, 240, 0.58)),
+    url('/art/wash.webp') center / cover;
+}
+:root.dark .chip,
+:root.dark .choice,
+:root.dark .study-card,
+:root.dark .block,
+:root.dark .stat-grid article,
+:root.dark .onboarding {
+  background: var(--card);
 }
 .mode, .chip, .toggle, .ghost, .primary, .grade, .play, .listen-orb, .choice, .example, .tab {
   border-radius: 18px;
@@ -264,7 +276,7 @@ h2 { font-size: 1.05rem; letter-spacing: -0.03em; }
 .tone-5 { color: var(--t5); }
 .play, .listen-orb {
   border: 1px solid var(--line);
-  background: var(--paper);
+  background: color-mix(in srgb, var(--amber-2) 55%, var(--paper));
   padding: 12px 18px;
   display: grid;
   justify-items: center;
@@ -296,7 +308,8 @@ h2 { font-size: 1.05rem; letter-spacing: -0.03em; }
   gap: 4px;
   padding: 12px;
   border: 1px dashed var(--line);
-  background: transparent;
+  background: color-mix(in srgb, var(--amber-2) 32%, transparent);
+  border-radius: 16px;
 }
 .strokes { display: grid; justify-items: center; gap: 6px; }
 .stroke-row { display: flex; gap: 10px; align-items: start; justify-content: center; flex-wrap: wrap; }
@@ -308,7 +321,7 @@ h2 { font-size: 1.05rem; letter-spacing: -0.03em; }
   height: 96px;
   border: 1px solid var(--line);
   border-radius: 16px;
-  background: var(--paper);
+  background: color-mix(in srgb, var(--amber-2) 40%, var(--paper));
   overflow: hidden;
 }
 .ai { width: min(100%, 520px); display: grid; gap: 8px; }
@@ -328,7 +341,7 @@ h2 { font-size: 1.05rem; letter-spacing: -0.03em; }
 .speed-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .speed {
   border: 1px solid var(--line);
-  background: color-mix(in srgb, var(--sand-1) 80%, transparent);
+  background: color-mix(in srgb, var(--amber-2) 45%, transparent);
   border-radius: 999px;
   padding: 7px 12px;
   font-size: 0.84rem;
@@ -343,8 +356,15 @@ h2 { font-size: 1.05rem; letter-spacing: -0.03em; }
   background:
     linear-gradient(var(--sand-6), var(--sand-6)) center / 100% 1px no-repeat,
     linear-gradient(var(--sand-6), var(--sand-6)) center / 1px 100% no-repeat,
-    var(--sand-2);
+    linear-gradient(rgba(253, 249, 240, 0.6), rgba(253, 249, 240, 0.6)) center / cover no-repeat,
+    url('/art/wash.webp') center / cover no-repeat;
   overflow: hidden;
+}
+:root.dark .quiz-pad {
+  background:
+    linear-gradient(var(--sand-6), var(--sand-6)) center / 100% 1px no-repeat,
+    linear-gradient(var(--sand-6), var(--sand-6)) center / 1px 100% no-repeat,
+    var(--sand-2);
 }
 .quiz-pad svg { width: 100% !important; height: 100% !important; }
 .row-toggles .speed-row { flex: 1 0 100%; }
@@ -377,7 +397,7 @@ h2 { font-size: 1.05rem; letter-spacing: -0.03em; }
 input {
   width: 100%;
   border: 1px solid var(--line);
-  background: var(--paper);
+  background: color-mix(in srgb, var(--amber-1) 60%, var(--paper));
   border-radius: 14px;
   padding: 12px 14px;
 }
