@@ -67,7 +67,7 @@ export function Progress() {
         </article>
       </div>
 
-      <div className="block">
+      <div className="block" data-art="bamboo">
         <h2>Две недели</h2>
         <div className="bars" aria-hidden="true">
           {days.map((day) => (
@@ -86,7 +86,7 @@ export function Progress() {
         </ul>
       </div>
 
-      <div className="block prose">
+      <div className="block prose" data-art="tea">
         <h2>Почему так</h2>
         <p>Интервалы — упрощённый SM-2, как в Anki: ошибка возвращает слово через минуту, уверенный ответ отодвигает его на дни.</p>
         <p>Карточки не учат язык целиком. Олли Ричардс и Olle Linge сходятся в одном: карточки — короткая доля занятия, остальное — понятные тексты и живая речь.</p>

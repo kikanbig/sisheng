@@ -83,7 +83,7 @@ export function Today() {
       </button>
       {empty && <p className="warn">В этом навыке пока не из чего собрать очередь. Добавь список или слова.</p>}
 
-      <div className="block">
+      <div className="block" data-art="voice">
         <div className="block-head">
           <h2>Голос</h2>
           <p>{mode === 'tones' ? 'Для тонов лучше один и тот же. Смешивай, когда слова уже знакомы.' : 'Шесть тембров путунхуа. Слово всегда читается иероглифами, не пиньинем.'}</p>
@@ -123,7 +123,7 @@ export function Today() {
       </div>
 
       {mode !== 'tones' && (
-        <div className="block">
+        <div className="block" data-art="scrolls">
           <h2>Списки в очереди</h2>
           <div className="voice-row">
             {store.lists

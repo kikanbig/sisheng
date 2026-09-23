@@ -158,7 +158,7 @@ export function Lists() {
         </button>
       </form>
 
-      <div className="block">
+      <div className="block" data-art="scrolls">
         <div className="block-head">
           <h2>{list.name}</h2>
           <p>{list.description}</p>
@@ -193,7 +193,7 @@ export function Lists() {
       </div>
 
       {list.id !== 'tones' && (
-        <div className="block">
+        <div className="block" data-art="ink">
           <h2>Добавить слово</h2>
           <div className="form-grid">
             <input value={hanzi} onChange={(event) => setHanzi(event.target.value)} placeholder="Иероглифы" maxLength={16} />
@@ -216,7 +216,7 @@ export function Lists() {
       )}
 
       {custom && (
-        <div className="block">
+        <div className="block" data-art="tea">
           <h2>Слова по теме</h2>
           <p>Модель предложит восемь слов. В список они попадут только после твоего согласия.</p>
           <form
