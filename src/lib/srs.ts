@@ -133,12 +133,15 @@ export function buildQueue(opts: {
   due.sort((a, b) => (opts.cards.get(cardId(a.id, opts.mode))?.due || 0) - (opts.cards.get(cardId(b.id, opts.mode))?.due || 0))
 
   const news = fresh.slice(0, Math.max(0, opts.newBudget))
-  const items: QueueItem[] = [
-    ...news.map((word) => ({ word, teach: true })),
-    ...learning.map((word) => ({ word, teach: false })),
-    ...due.map((word) => ({ word, teach: false })),
-    ...news.map((word) => ({ word, teach: false })),
-  ]
+  const items: QueueItem[] =
+    opts.mode === 'write'
+      ? [...learning, ...due, ...news].map((word) => ({ word, teach: false }))
+      : [
+          ...news.map((word) => ({ word, teach: true })),
+          ...learning.map((word) => ({ word, teach: false })),
+          ...due.map((word) => ({ word, teach: false })),
+          ...news.map((word) => ({ word, teach: false })),
+        ]
 
   const ahead = opts.ahead ?? 0
   if (ahead > 0 && items.filter((item) => !item.teach).length === 0) {

@@ -59,10 +59,23 @@ function limited(req, bucket, max, windowMs) {
   return false
 }
 
-function speakRate(slow, modeHint) {
-  if (slow) return '-28%'
-  if (modeHint === 'tones') return '-18%'
-  return '-8%'
+const RATES = {
+  slow: { word: '-32%', line: '-46%', tone: '-30%' },
+  steady: { word: '-12%', line: '-32%', tone: '-20%' },
+  clear: { word: '-4%', line: '-18%', tone: '-14%' },
+  brisk: { word: '+4%', line: '-8%', tone: '-8%' },
+}
+
+function isPhrase(text) {
+  const han = [...text].filter((char) => /\p{Script=Han}/u.test(char)).length
+  return han >= 5 || /[。！？!?…]/.test(text)
+}
+
+function speakRate(speed, modeHint, text) {
+  const row = RATES[speed] || RATES.steady
+  if (modeHint === 'tones') return row.tone
+  if (isPhrase(text)) return row.line
+  return row.word
 }
 
 function synthesize(text, voice, rate) {
@@ -160,14 +173,15 @@ app.post('/api/tts', async (req, res) => {
   }
   const text = String(req.body?.text || '').replace(/\s+/g, ' ').trim().slice(0, 180)
   const voice = String(req.body?.voice || '')
-  const slow = Boolean(req.body?.slow)
+  const requested = String(req.body?.speed || (req.body?.slow ? 'slow' : 'steady'))
+  const speed = requested in RATES ? requested : 'steady'
   const modeHint = req.body?.mode === 'tones' ? 'tones' : 'vocab'
   if (!text || !VOICES.has(voice)) {
     res.status(400).json({ error: 'Нужны текст и известный голос.' })
     return
   }
   try {
-    const audio = await synthesize(text, voice, speakRate(slow, modeHint))
+    const audio = await synthesize(text, voice, speakRate(speed, modeHint, text))
     res.setHeader('content-type', 'audio/mpeg')
     res.setHeader('cache-control', 'public, max-age=86400')
     res.send(audio)

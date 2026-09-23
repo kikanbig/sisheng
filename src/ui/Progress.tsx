@@ -3,11 +3,12 @@ import { dayWord, todayKey } from '../lib/srs'
 import { useStore } from '../store'
 import type { BackupFile, Mode } from '../types'
 
-const MODES: Mode[] = ['read', 'listen', 'recall', 'tones']
+const MODES: Mode[] = ['read', 'listen', 'recall', 'write', 'tones']
 const MODE_NAME: Record<Mode, string> = {
   read: 'Чтение',
   listen: 'Слух',
   recall: 'С русского',
+  write: 'Черты',
   tones: 'Тоны',
 }
 

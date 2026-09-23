@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { normalizePinyin } from '../lib/pinyin'
 import { useStore } from '../store'
 import type { Word } from '../types'
@@ -19,6 +19,7 @@ export function Lists() {
   const [drafts, setDrafts] = useState<Word[]>([])
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
+  const [shown, setShown] = useState(60)
 
   const list = store.lists.find((item) => item.id === openId) ?? store.lists[0]
   const words = useMemo(() => {
@@ -27,6 +28,10 @@ export function Lists() {
       .filter((word) => word.listId === list?.id)
       .filter((word) => !q || `${word.hanzi} ${word.pinyin} ${word.ru}`.toLowerCase().includes(q))
   }, [store.words, list?.id, query])
+
+  useEffect(() => {
+    setShown(60)
+  }, [openId, query])
 
   if (!list) return null
   const custom = !list.builtin
@@ -127,7 +132,7 @@ export function Lists() {
   return (
     <section className="screen">
       <p className="eyebrow">колоды</p>
-      <h1>Свои слова рядом с HSK.</h1>
+      <h1>От урока до HSK 6.</h1>
       <div className="list-switch">
         {store.lists.map((item) => (
           <button key={item.id} type="button" className={item.id === list.id ? 'chip on' : 'chip'} onClick={() => setOpenId(item.id)}>
@@ -160,14 +165,14 @@ export function Lists() {
         </div>
         <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Найти в списке" />
         <ul className="word-list">
-          {words.map((word) => (
+          {words.slice(0, shown).map((word) => (
             <li key={word.id}>
               <div>
                 <b className="hanzi">{word.hanzi}</b>
                 <Pinyin text={word.pinyin} />
                 <span>{word.ru}</span>
               </div>
-              {!word.id.startsWith('hsk:') && !word.id.startsWith('tone:') && (
+              {word.id.startsWith('c:') && (
                 <button type="button" className="text-btn" onClick={() => store.removeWord(word.id)}>
                   Убрать
                 </button>
@@ -175,6 +180,11 @@ export function Lists() {
             </li>
           ))}
         </ul>
+        {words.length > shown && (
+          <button type="button" className="text-btn" onClick={() => setShown((count) => count + 80)}>
+            Ещё {Math.min(80, words.length - shown)} · всего {words.length}
+          </button>
+        )}
         {custom && (
           <button type="button" className="text-btn danger" onClick={() => { store.removeList(list.id); setOpenId('hsk1') }}>
             Удалить список

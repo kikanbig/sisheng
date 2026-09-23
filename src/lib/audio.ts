@@ -1,5 +1,18 @@
+import type { Speed } from '../types'
 import { cacheAudio, readAudio } from './db'
 import { VOICES, voiceById } from './voices'
+
+export function isPhrase(text: string) {
+  const han = [...text].filter((char) => /\p{Script=Han}/u.test(char)).length
+  return han >= 5 || /[。！？!?…]/.test(text)
+}
+
+const DEVICE_RATE: Record<Speed, number> = {
+  slow: 0.62,
+  steady: 0.78,
+  clear: 0.9,
+  brisk: 1.02,
+}
 
 const memory = new Map<string, string>()
 let player: HTMLAudioElement | null = null
@@ -27,7 +40,7 @@ async function playUrl(url: string, mine: number) {
   await audio.play()
 }
 
-function deviceSpeak(text: string, slow: boolean, mine: number) {
+function deviceSpeak(text: string, speed: Speed, phrase: boolean, mine: number) {
   return new Promise<void>((resolve, reject) => {
     if (mine !== ticket) {
       resolve()
@@ -42,7 +55,7 @@ function deviceSpeak(text: string, slow: boolean, mine: number) {
     const voice = voices.find((item) => item.lang.toLowerCase().startsWith('zh'))
     if (voice) utter.voice = voice
     utter.lang = 'zh-CN'
-    utter.rate = slow ? 0.72 : 0.88
+    utter.rate = Math.max(0.55, DEVICE_RATE[speed] - (phrase ? 0.14 : 0))
     utter.onend = () => resolve()
     utter.onerror = () => reject(new Error('speech-error'))
     speechSynthesis.cancel()
@@ -53,13 +66,14 @@ function deviceSpeak(text: string, slow: boolean, mine: number) {
 export async function speak(
   text: string,
   voiceId: string,
-  slow: boolean,
+  speed: Speed,
   mode: 'tones' | 'vocab' = 'vocab',
 ): Promise<'neural' | 'device'> {
   const clean = text.trim()
   if (!clean) return 'neural'
   const mine = ++ticket
-  const key = `${voiceId}|${slow ? 's' : 'n'}|${mode}|${clean}`
+  const phrase = mode !== 'tones' && isPhrase(clean)
+  const key = `${voiceId}|${speed}|${phrase ? 'line' : mode}|${clean}`
   const known = memory.get(key)
   if (known) {
     await playUrl(known, mine)
@@ -77,7 +91,7 @@ export async function speak(
     const response = await fetch('/api/tts', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ text: clean, voice: voiceId, slow, mode }),
+      body: JSON.stringify({ text: clean, voice: voiceId, speed, mode }),
     })
     if (mine !== ticket) return 'neural'
     if (!response.ok) throw new Error(String(response.status))
@@ -89,7 +103,7 @@ export async function speak(
     return 'neural'
   } catch {
     if (mine !== ticket) return 'neural'
-    await deviceSpeak(clean, slow, mine)
+    await deviceSpeak(clean, speed, phrase, mine)
     return 'device'
   }
 }

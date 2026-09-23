@@ -15,7 +15,7 @@ import {
   saveWord,
 } from './lib/db'
 import { buildQueue, cardId, freshCard, reviewCard, todayKey, yesterdayKey, type QueueItem } from './lib/srs'
-import type { BackupFile, DayStats, Grade, Mode, Settings, SrsCard, Word, WordList } from './types'
+import type { BackupFile, DayStats, Grade, Mode, Settings, Speed, SrsCard, Word, WordList } from './types'
 
 type Stats = { streak: number; lastStudy: string; days: DayStats }
 
@@ -69,9 +69,39 @@ function budgetLeft(newSeen: Record<string, number>, mode: Mode, perDay: number)
 }
 
 const wordRank = new Map(builtinWords.map((word, index) => [word.id, index]))
+const LIST_RANK = ['lesson1', 'hsk1', 'hsk2', 'hsk3', 'hsk4', 'hsk5', 'hsk6', 'tones']
+
+function studyRank(id: string) {
+  const known = wordRank.get(id)
+  if (known !== undefined) return known
+  const match = id.match(/^hsk(\d):(\d+):/)
+  if (match) return 30000 + Number(match[1]) * 100000 + Number(match[2])
+  return 900000
+}
 
 function byStudyOrder(list: Word[]) {
-  return list.slice().sort((a, b) => (wordRank.get(a.id) ?? 100000) - (wordRank.get(b.id) ?? 100000) || a.hanzi.localeCompare(b.hanzi, 'zh'))
+  return list.slice().sort((a, b) => studyRank(a.id) - studyRank(b.id) || a.hanzi.localeCompare(b.hanzi, 'zh'))
+}
+
+function sortLists(lists: WordList[]) {
+  return lists.slice().sort((a, b) => {
+    const ai = LIST_RANK.indexOf(a.id)
+    const bi = LIST_RANK.indexOf(b.id)
+    return (ai < 0 ? 40 : ai) - (bi < 0 ? 40 : bi) || a.createdAt - b.createdAt
+  })
+}
+
+function applyTheme(theme: Settings['theme']) {
+  document.documentElement.dataset.theme = theme
+  document.documentElement.classList.toggle('dark', theme === 'night')
+  const meta = document.querySelector('meta[name="theme-color"]')
+  if (meta) meta.setAttribute('content', theme === 'night' ? '#191918' : '#f8f7f4')
+}
+
+function coerceSpeed(value: string | undefined): Speed {
+  if (value === 'slow' || value === 'steady' || value === 'clear' || value === 'brisk') return value
+  if (value === 'normal') return 'clear'
+  return 'steady'
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
@@ -90,14 +120,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     loadAll()
       .then((data) => {
         setWords(data.words)
-        setLists(data.lists)
+        setLists(sortLists(data.lists))
         setCards(data.srs)
-        setSettings(data.settings)
+        setSettings({ ...data.settings, speed: coerceSpeed(data.settings.speed) })
         setStats(data.stats)
         setNewSeen(data.newSeen)
-        document.documentElement.dataset.theme = data.settings.theme
-        const meta = document.querySelector('meta[name="theme-color"]')
-        if (meta) meta.setAttribute('content', data.settings.theme === 'night' ? '#12100e' : '#f3ead7')
+        applyTheme(data.settings.theme)
         setReady(true)
       })
       .catch(() => setError('Не удалось открыть память браузера. Открой приложение не в приватном окне.'))
@@ -120,11 +148,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const updateSettings = (patch: Partial<Settings>) => {
     if (!settings) return
-    const next = { ...settings, ...patch }
+    const next = { ...settings, ...patch, speed: coerceSpeed((patch.speed ?? settings.speed) as string) }
     setSettings(next)
-    document.documentElement.dataset.theme = next.theme
-    const meta = document.querySelector('meta[name="theme-color"]')
-    if (meta) meta.setAttribute('content', next.theme === 'night' ? '#12100e' : '#f3ead7')
+    applyTheme(next.theme)
     void saveSettings(next)
   }
 
@@ -194,10 +220,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     settings: settings ?? {
       voice: 'zh-CN-XiaoxiaoNeural',
       mixVoices: false,
-      speed: 'normal',
+      speed: 'steady',
       newPerDay: 8,
       theme: 'paper',
-      studyLists: ['hsk1'],
+      studyLists: ['lesson1', 'hsk1'],
       onboardingDone: true,
     },
     stats,
@@ -228,7 +254,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         builtin: false,
         createdAt: Date.now(),
       }
-      setLists((current) => [...current, list])
+      setLists((current) => sortLists([...current, list]))
       void saveList(list)
       if (settings && !settings.studyLists.includes(list.id)) {
         updateSettings({ studyLists: [...settings.studyLists, list.id] })

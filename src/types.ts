@@ -1,6 +1,6 @@
-export type Mode = 'read' | 'listen' | 'recall' | 'tones'
+export type Mode = 'read' | 'listen' | 'recall' | 'tones' | 'write'
 export type Grade = 'again' | 'hard' | 'good' | 'easy'
-export type Speed = 'normal' | 'slow'
+export type Speed = 'slow' | 'steady' | 'clear' | 'brisk'
 export type Theme = 'paper' | 'night'
 
 export type Example = { hanzi: string; pinyin: string; ru: string }

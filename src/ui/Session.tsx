@@ -6,13 +6,15 @@ import type { Grade } from '../types'
 import { useStore } from '../store'
 import { AiPanel } from './AiPanel'
 import { Contour, Pinyin, syllableTone } from './Pinyin'
-import { Strokes } from './Strokes'
+import { SpeedPicker } from './Speed'
+import { StrokeQuiz, Strokes } from './Strokes'
 
 const MODE_TITLE = {
   read: 'Чтение',
   listen: 'Слух',
   recall: 'С русского',
   tones: 'Тоны',
+  write: 'Черты',
 } as const
 
 const GRADES: { id: Grade; label: string }[] = [
@@ -47,7 +49,7 @@ export function Session() {
     const should = teach || session.mode === 'listen' || session.mode === 'tones'
     if (!should) return
     let live = true
-    void speak(item.word.hanzi, voiceFor(item.word.id), store.settings.speed === 'slow', session.mode === 'tones' ? 'tones' : 'vocab')
+    void speak(item.word.hanzi, voiceFor(item.word.id), store.settings.speed, session.mode === 'tones' ? 'tones' : 'vocab')
       .then((kind) => {
         if (!live) return
         setHint(kind === 'device' ? 'Говорит голос устройства. Нейросеть сейчас молчит.' : '')
@@ -108,14 +110,14 @@ export function Session() {
   const card = store.cards.find((row) => row.id === cardId(word.id, round.mode)) ?? freshCard(word.id, round.mode)
 
   function play(text = word.hanzi) {
-    void speak(text, voiceFor(word.id), store.settings.speed === 'slow', audioMode)
+    void speak(text, voiceFor(word.id), store.settings.speed, audioMode)
       .then((kind) => setHint(kind === 'device' ? 'Говорит голос устройства. Нейросеть сейчас молчит.' : ''))
       .catch(() => setHint('Нажми кнопку звука ещё раз.'))
   }
 
   function show() {
     setRevealed(true)
-    if (round.mode === 'read' || round.mode === 'recall') play()
+    if (round.mode !== 'listen' && round.mode !== 'tones') play()
   }
 
   function commit(value: Grade) {
@@ -167,6 +169,7 @@ export function Session() {
           {voice.han} {voice.name}
         </span>
       </header>
+      <SpeedPicker value={store.settings.speed} onChange={(speed) => store.updateSettings({ speed })} />
 
       <article className="study-card">
         {item.teach ? (
@@ -181,12 +184,14 @@ export function Session() {
             onPlay={() => play()}
             onHear={(hanzi) => play(hanzi)}
           />
+        ) : session.mode === 'write' ? (
+          revealed ? null : <StrokeQuiz key={word.id} hanzi={word.hanzi} meaning={word.ru} onDone={show} />
         ) : session.mode === 'listen' ? (
           revealed ? null : <ListenFace onPlay={() => play()} />
         ) : session.mode === 'recall' ? (
           revealed ? null : <h2 className="meaning-xl">{word.ru}</h2>
         ) : (
-          revealed ? null : <h2 className="hanzi hanzi-xl">{word.hanzi}</h2>
+          revealed ? null : <h2 className={faceClass(word.hanzi, 'xl')}>{word.hanzi}</h2>
         )}
 
         {!item.teach && session.mode !== 'tones' && revealed && (
@@ -247,6 +252,10 @@ export function Session() {
               )
             })}
           </div>
+        ) : round.mode === 'write' ? (
+          <button type="button" className="ghost" onClick={show}>
+            Пока не выходит
+          </button>
         ) : (
           <button type="button" className="primary" onClick={show}>
             Показать ответ
@@ -257,11 +266,15 @@ export function Session() {
   )
 }
 
+function faceClass(text: string, size: 'xl' | 'lg') {
+  return `hanzi hanzi-${size}${[...text].length >= 5 ? ' is-long' : ''}`
+}
+
 function Teach({ wordHanzi, onPlay }: { wordHanzi: string; onPlay: () => void }) {
   return (
     <div className="teach-mark">
       <p className="eyebrow">сначала посмотри и услышь</p>
-      <button type="button" className="hanzi hanzi-xl bare" onClick={onPlay}>
+      <button type="button" className={`${faceClass(wordHanzi, 'xl')} bare`} onClick={onPlay}>
         {wordHanzi}
       </button>
     </div>
@@ -336,7 +349,7 @@ function Answer({
   return (
     <div className="answer">
       {!teach && (
-        <button type="button" className="hanzi hanzi-lg bare" onClick={onPlay}>
+        <button type="button" className={`${faceClass(word.hanzi, 'lg')} bare`} onClick={onPlay}>
           {word.hanzi}
         </button>
       )}

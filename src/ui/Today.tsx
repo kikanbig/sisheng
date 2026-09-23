@@ -3,11 +3,13 @@ import { wordsLabel } from '../lib/srs'
 import { useStore } from '../store'
 import { VOICES } from '../lib/voices'
 import type { Mode } from '../types'
+import { SpeedPicker } from './Speed'
 
 const MODES: { id: Mode; title: string; hint: string }[] = [
   { id: 'read', title: 'Чтение', hint: 'иероглиф → смысл' },
   { id: 'listen', title: 'Слух', hint: 'только голос' },
   { id: 'recall', title: 'С русского', hint: 'смысл → слово' },
+  { id: 'write', title: 'Черты', hint: 'пиши по одной черте' },
   { id: 'tones', title: 'Тоны', hint: 'контур, не перевод' },
 ]
 
@@ -67,7 +69,7 @@ export function Today() {
         {MODES.map((item) => {
           const row = store.countsFor(item.id)
           return (
-            <button key={item.id} type="button" className={mode === item.id ? 'mode on' : 'mode'} onClick={() => { setMode(item.id); setEmpty(false) }}>
+            <button key={item.id} type="button" data-kind={item.id} className={mode === item.id ? 'mode on' : 'mode'} onClick={() => { setMode(item.id); setEmpty(false) }}>
               <b>{item.title}</b>
               <small>{item.hint}</small>
               <em>{row.due + row.fresh}</em>
@@ -106,13 +108,7 @@ export function Today() {
           <button type="button" className={store.settings.mixVoices ? 'toggle on' : 'toggle'} onClick={() => store.updateSettings({ mixVoices: !store.settings.mixVoices })}>
             Менять голос
           </button>
-          <button
-            type="button"
-            className={store.settings.speed === 'slow' ? 'toggle on' : 'toggle'}
-            onClick={() => store.updateSettings({ speed: store.settings.speed === 'slow' ? 'normal' : 'slow' })}
-          >
-            {store.settings.speed === 'slow' ? 'Медленно' : 'Обычно'}
-          </button>
+          <SpeedPicker value={store.settings.speed} onChange={(speed) => store.updateSettings({ speed })} />
           <span className="stepper">
             <button type="button" onClick={() => store.updateSettings({ newPerDay: Math.max(4, store.settings.newPerDay - 2) })}>
               −
@@ -123,6 +119,7 @@ export function Today() {
             </button>
           </span>
         </div>
+        <p className="fine">Фразы читаются медленнее отдельных слов. Скорость можно сменить и во время карточки.</p>
       </div>
 
       {mode !== 'tones' && (

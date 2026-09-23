@@ -15,10 +15,10 @@ type Schema = {
 export const defaultSettings = (): Settings => ({
   voice: DEFAULT_VOICE,
   mixVoices: false,
-  speed: 'normal',
+  speed: 'steady',
   newPerDay: 8,
   theme: 'paper',
-  studyLists: ['hsk1'],
+  studyLists: ['lesson1', 'hsk1'],
   onboardingDone: false,
 })
 
@@ -34,12 +34,31 @@ async function init(): Promise<IDBPDatabase<Schema>> {
       database.createObjectStore('audio')
     },
   })
-  const tx = db.transaction(['words', 'lists'], 'readwrite')
-  for (const list of builtinLists) {
-    if (!(await tx.objectStore('lists').get(list.id))) await tx.objectStore('lists').put(list)
+  const extra = await import('../data/hsk-extra.ts')
+  const tx = db.transaction(['words', 'lists', 'kv'], 'readwrite')
+  let lesson1Fresh = false
+  const lists = tx.objectStore('lists')
+  for (const list of [...builtinLists, ...extra.extraLists]) {
+    if (!(await lists.get(list.id))) {
+      await lists.put(list)
+      if (list.id === 'lesson1') lesson1Fresh = true
+    }
   }
+  const words = tx.objectStore('words')
   for (const word of builtinWords) {
-    if (!(await tx.objectStore('words').get(word.id))) await tx.objectStore('words').put(word)
+    if (!(await words.get(word.id))) await words.put(word)
+  }
+  const seeded = await tx.objectStore('kv').get('seed')
+  if (seeded !== 'hsk6-v1') {
+    const incoming = extra.extraWords()
+    await Promise.all(incoming.map((word) => words.put(word)))
+    await tx.objectStore('kv').put('hsk6-v1', 'seed')
+  }
+  if (lesson1Fresh) {
+    const saved = (await tx.objectStore('kv').get('settings')) as Settings | undefined
+    if (saved && !saved.studyLists.includes('lesson1')) {
+      await tx.objectStore('kv').put({ ...saved, studyLists: ['lesson1', ...saved.studyLists] }, 'settings')
+    }
   }
   await tx.done
   return db
