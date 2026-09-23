@@ -284,7 +284,10 @@ h2 { font-size: 1.05rem; letter-spacing: -0.03em; }
   background: transparent;
 }
 .strokes { display: grid; justify-items: center; gap: 6px; }
-.stroke-row { display: flex; gap: 8px; }
+.stroke-row { display: flex; gap: 10px; align-items: start; justify-content: center; flex-wrap: wrap; }
+.stroke-cell { display: grid; justify-items: center; gap: 2px; width: 96px; }
+.stroke-play { font-size: 0.72rem; line-height: 1.2; text-align: center; padding: 4px 0; }
+.stroke-play.on { color: var(--cinnabar); }
 .stroke-box {
   width: 96px;
   height: 96px;

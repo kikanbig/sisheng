@@ -9,12 +9,21 @@ function paintColor(variable: string, fallback: string) {
   return color.startsWith('rgb') ? color : fallback
 }
 
-type StrokeWriter = { animateCharacter: () => Promise<void> }
+type StrokeWriter = {
+  animateStroke: (strokeNum: number) => Promise<unknown>
+  showCharacter: (options?: { duration?: number }) => Promise<unknown>
+  pauseAnimation: () => Promise<unknown>
+  getCharacterData: () => Promise<{ strokes: { isInRadical: boolean }[] }>
+}
 
-async function playInOrder(list: StrokeWriter[], token: { current: number }, generation: number) {
-  for (const writer of list) {
+async function playRadical(writer: StrokeWriter, token: { current: number }, generation: number) {
+  const data = await writer.getCharacterData()
+  if (token.current !== generation) return
+  const radical = data.strokes.flatMap((stroke, index) => (stroke.isInRadical ? [index] : []))
+  await writer.showCharacter({ duration: 0 })
+  for (const index of radical) {
     if (token.current !== generation) return
-    await writer.animateCharacter()
+    await writer.animateStroke(index)
   }
 }
 
@@ -23,10 +32,10 @@ export function Strokes({ hanzi }: { hanzi: string }) {
   const host = useRef<HTMLDivElement>(null)
   const writers = useRef<StrokeWriter[]>([])
   const token = useRef(0)
+  const [playing, setPlaying] = useState<number | null>(null)
 
   useEffect(() => {
     let gone = false
-    const generation = ++token.current
     writers.current = []
     const nodes = host.current ? [...host.current.querySelectorAll<HTMLDivElement>('[data-char]')] : []
     nodes.forEach((node) => {
@@ -38,30 +47,31 @@ export function Strokes({ hanzi }: { hanzi: string }) {
       const HanziWriter = mod.default
       const ink = paintColor('--ink', '#1c1917')
       const line = paintColor('--line', '#d6d3d1')
+      const accent = paintColor('--cinnabar', '#c2452d')
       const ready: StrokeWriter[] = []
       for (let i = 0; i < chars.length; i += 1) {
         const node = nodes[i]
         if (!node) continue
         try {
-          const writer = HanziWriter.create(node, chars[i], {
-            width: 96,
-            height: 96,
-            padding: 6,
-            showCharacter: false,
-            showOutline: false,
-            strokeAnimationSpeed: 0.4,
-            delayBetweenStrokes: 380,
-            strokeColor: ink,
-            outlineColor: line,
-            radicalColor: '#c2452d',
-          })
-          ready.push(writer)
+          ready.push(
+            HanziWriter.create(node, chars[i], {
+              width: 96,
+              height: 96,
+              padding: 6,
+              showCharacter: true,
+              showOutline: false,
+              strokeAnimationSpeed: 0.45,
+              delayBetweenStrokes: 280,
+              strokeColor: ink,
+              outlineColor: line,
+              radicalColor: accent,
+            }),
+          )
         } catch {
           node.textContent = chars[i]
         }
       }
       writers.current = ready
-      await playInOrder(ready, token, generation)
     })()
     return () => {
       gone = true
@@ -69,25 +79,36 @@ export function Strokes({ hanzi }: { hanzi: string }) {
     }
   }, [hanzi])
 
+  function play(index: number) {
+    const writer = writers.current[index]
+    if (!writer) return
+    const generation = ++token.current
+    setPlaying(index)
+    void (async () => {
+      for (let i = 0; i < writers.current.length; i += 1) {
+        if (i === index) continue
+        void writers.current[i].pauseAnimation()
+        void writers.current[i].showCharacter({ duration: 0 })
+      }
+      await playRadical(writer, token, generation)
+      if (token.current === generation) setPlaying(null)
+    })()
+  }
+
   if (!chars.length) return null
 
   return (
     <div className="strokes">
       <div className="stroke-row" ref={host}>
         {chars.map((char, index) => (
-          <div key={`${hanzi}-${index}`} data-char={char} className="stroke-box" />
+          <div key={`${hanzi}-${index}`} className="stroke-cell">
+            <div data-char={char} className="stroke-box" />
+            <button type="button" className={playing === index ? 'text-btn stroke-play on' : 'text-btn stroke-play'} onClick={() => play(index)}>
+              Черты ключа
+            </button>
+          </div>
         ))}
       </div>
-      <button
-        type="button"
-        className="text-btn"
-        onClick={() => {
-          const generation = ++token.current
-          void playInOrder(writers.current, token, generation)
-        }}
-      >
-        Порядок черт
-      </button>
     </div>
   )
 }
