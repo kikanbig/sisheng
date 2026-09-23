@@ -9,13 +9,24 @@ function paintColor(variable: string, fallback: string) {
   return color.startsWith('rgb') ? color : fallback
 }
 
+type StrokeWriter = { animateCharacter: () => Promise<void> }
+
+async function playInOrder(list: StrokeWriter[], token: { current: number }, generation: number) {
+  for (const writer of list) {
+    if (token.current !== generation) return
+    await writer.animateCharacter()
+  }
+}
+
 export function Strokes({ hanzi }: { hanzi: string }) {
   const chars = [...hanzi].filter((char) => /\p{Script=Han}/u.test(char)).slice(0, 4)
   const host = useRef<HTMLDivElement>(null)
-  const writers = useRef<{ animateCharacter: () => Promise<void> }[]>([])
+  const writers = useRef<StrokeWriter[]>([])
+  const token = useRef(0)
 
   useEffect(() => {
     let gone = false
+    const generation = ++token.current
     writers.current = []
     const nodes = host.current ? [...host.current.querySelectorAll<HTMLDivElement>('[data-char]')] : []
     nodes.forEach((node) => {
@@ -27,6 +38,7 @@ export function Strokes({ hanzi }: { hanzi: string }) {
       const HanziWriter = mod.default
       const ink = paintColor('--ink', '#1c1917')
       const line = paintColor('--line', '#d6d3d1')
+      const ready: StrokeWriter[] = []
       for (let i = 0; i < chars.length; i += 1) {
         const node = nodes[i]
         if (!node) continue
@@ -35,21 +47,25 @@ export function Strokes({ hanzi }: { hanzi: string }) {
             width: 96,
             height: 96,
             padding: 6,
-            showOutline: true,
-            strokeAnimationSpeed: 0.9,
-            delayBetweenStrokes: 90,
+            showCharacter: false,
+            showOutline: false,
+            strokeAnimationSpeed: 0.4,
+            delayBetweenStrokes: 380,
             strokeColor: ink,
             outlineColor: line,
             radicalColor: '#c2452d',
           })
-          writers.current.push(writer)
+          ready.push(writer)
         } catch {
           node.textContent = chars[i]
         }
       }
+      writers.current = ready
+      await playInOrder(ready, token, generation)
     })()
     return () => {
       gone = true
+      token.current += 1
     }
   }, [hanzi])
 
@@ -66,7 +82,8 @@ export function Strokes({ hanzi }: { hanzi: string }) {
         type="button"
         className="text-btn"
         onClick={() => {
-          for (const writer of writers.current) void writer.animateCharacter()
+          const generation = ++token.current
+          void playInOrder(writers.current, token, generation)
         }}
       >
         Порядок черт
@@ -93,7 +110,7 @@ export function StrokeQuiz({
   const [index, setIndex] = useState(0)
   const [seen, setSeen] = useState(hanzi)
   const [outline, setOutline] = useState(true)
-  const [note, setNote] = useState('Веди черту в том порядке, в каком она пишется.')
+  const [note, setNote] = useState('Сначала смотри, как черта проводится.')
   if (seen !== hanzi) {
     setSeen(hanzi)
     setIndex(0)
@@ -107,10 +124,16 @@ export function StrokeQuiz({
     if (!char || !node) return
     const stamp = `${hanzi}:${index}:${outline}`
     node.dataset.stroke = stamp
-    let writer: { cancelQuiz: () => void; quiz: (options?: Record<string, unknown>) => void } | null = null
+    let writer: {
+      animateCharacter: () => Promise<void>
+      showOutline: (options?: { duration?: number }) => Promise<void>
+      cancelQuiz: () => void
+      quiz: (options?: Record<string, unknown>) => void
+    } | null = null
     ;(async () => {
       const mod = await import('hanzi-writer')
       if (node.dataset.stroke !== stamp) return
+      setNote('Сначала смотри, как черта проводится.')
       const HanziWriter = mod.default
       const ink = paintColor('--ink', '#1c1917')
       const line = paintColor('--line', '#d6d3d1')
@@ -121,8 +144,10 @@ export function StrokeQuiz({
           width: 280,
           height: 280,
           padding: 14,
-          showOutline: outline,
+          showOutline: false,
           showCharacter: false,
+          strokeAnimationSpeed: 0.4,
+          delayBetweenStrokes: 380,
           strokeColor: ink,
           outlineColor: line,
           highlightColor: accent,
@@ -139,6 +164,11 @@ export function StrokeQuiz({
         return
       }
       if (node.dataset.stroke !== stamp) return
+      await writer.animateCharacter()
+      if (node.dataset.stroke !== stamp) return
+      if (outline) await writer.showOutline({ duration: 180 })
+      if (node.dataset.stroke !== stamp) return
+      setNote('Теперь повтори этот знак. Перо ведётся по одной черте.')
       writer.quiz({
         showHintAfterMisses: 2,
         onMistake() {
