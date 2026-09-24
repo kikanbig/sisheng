@@ -51,7 +51,7 @@ export function Session() {
   useEffect(() => {
     if (!item || !session) return
     const teach = item.teach
-    const should = teach || session.mode === 'listen' || session.mode === 'tones' || session.mode === 'write'
+    const should = teach || session.mode === 'listen' || session.mode === 'tones' || session.mode === 'write' || session.mode === 'read'
     if (!should) return
     let live = true
     void speak(item.word.hanzi, voiceFor(item.word.id), store.settings.speed, session.mode === 'tones' ? 'tones' : 'vocab')
@@ -122,7 +122,7 @@ export function Session() {
 
   function show() {
     setRevealed(true)
-    if (round.mode !== 'listen' && round.mode !== 'tones') play()
+    if (round.mode !== 'listen' && round.mode !== 'tones' && round.mode !== 'read') play()
   }
 
   function commit(value: Grade) {
