@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { pickVoice, speak, stopSpeech } from '../lib/audio'
+import { pickVoice, prefetch, speak, stopSpeech } from '../lib/audio'
 import { voiceById } from '../lib/voices'
 import { dayWord } from '../lib/srs'
 import type { Grade } from '../types'
@@ -24,11 +24,13 @@ export function Session() {
   const [picked, setPicked] = useState<number | null>(null)
   const [hint, setHint] = useState('')
   const [dx, setDx] = useState(0)
+  const [attempt, setAttempt] = useState(0)
   const drag = useRef<{ x: number; y: number; id: number; active: boolean } | null>(null)
   const dxRef = useRef(0)
   const swiped = useRef(false)
   const swipeAt = useRef(0)
   const voiced = useRef(-1)
+  const misses = useRef(0)
   const voices = useRef(new Map<string, string>())
 
   const item = session && session.index < session.items.length ? session.items[session.index] : null
@@ -43,28 +45,36 @@ export function Session() {
     setDx(0)
     dxRef.current = 0
     drag.current = null
+    misses.current = 0
   }
 
   useEffect(() => {
     if (!item || !session) return
+    const audioMode = session.mode === 'tones' ? 'tones' : 'vocab'
+    const upcoming = session.items[session.index + 1]
+    if (upcoming) prefetch(upcoming.word.hanzi, voiceFor(upcoming.word.id), store.settings.speed, audioMode)
     if (voiced.current === session.index) return
-    const teach = item.teach
-    const should = teach || session.mode === 'listen' || session.mode === 'tones' || session.mode === 'write' || session.mode === 'read'
+    const should = item.teach || session.mode === 'listen' || session.mode === 'tones' || session.mode === 'write' || session.mode === 'read'
     if (!should) return
-    voiced.current = session.index
+    const cardIndex = session.index
+    voiced.current = cardIndex
     let live = true
-    void speak(item.word.hanzi, voiceFor(item.word.id), store.settings.speed, session.mode === 'tones' ? 'tones' : 'vocab')
+    void speak(item.word.hanzi, voiceFor(item.word.id), store.settings.speed, audioMode)
       .then((kind) => {
         if (!live) return
+        if (kind === 'miss') {
+          retry(cardIndex)
+          return
+        }
         setHint(kind === 'device' ? 'Говорит голос устройства. Нейросеть сейчас молчит.' : '')
       })
       .catch(() => {
-        if (live) setHint('Нажми кнопку звука ещё раз.')
+        if (live) retry(cardIndex)
       })
     return () => {
       live = false
     }
-  }, [item?.word.id, item?.teach, session?.index, session?.mode])
+  }, [item?.word.id, item?.teach, session?.index, session?.mode, attempt])
 
   useEffect(() => () => stopSpeech(), [])
 
@@ -128,11 +138,23 @@ export function Session() {
     if (round.mode !== 'listen' && round.mode !== 'tones' && round.mode !== 'read') play()
   }
 
+  function retry(cardIndex: number) {
+    if (voiced.current !== cardIndex || misses.current >= 2) return
+    misses.current += 1
+    voiced.current = -1
+    setAttempt((value) => value + 1)
+  }
+
   function commit(value: Grade) {
-    const next = round.items[round.index + 1]
+    const nextIndex = round.index + 1
+    const next = round.items[nextIndex]
     if (next) {
-      voiced.current = round.index + 1
+      voiced.current = nextIndex
       void speak(next.word.hanzi, voiceFor(next.word.id), store.settings.speed, round.mode === 'tones' ? 'tones' : 'vocab')
+        .then((kind) => {
+          if (kind === 'miss') retry(nextIndex)
+        })
+        .catch(() => retry(nextIndex))
     }
     store.grade(word, round.mode, value)
     if (value === 'again') store.pushAgain(cardItem)
