@@ -132,13 +132,13 @@ export function Session() {
       .catch(() => setHint('Нажми кнопку звука ещё раз.'))
   }
 
-  function replay() {
+  function replay(text = word.hanzi) {
     const pool = VOICES.map((item) => item.id)
     const current = heardId || voiceFor(word.id)
     const at = pool.indexOf(current)
     const next = pool[(at + 1) % pool.length]
     setHeardId(next)
-    play(word.hanzi, next)
+    play(text, next)
   }
 
   function show() {
@@ -329,7 +329,12 @@ export function Session() {
         )}
 
         {!item.teach && session.mode !== 'tones' && revealed && (
-          <Answer word={word} onPlay={() => play()} onExample={() => word.example && play(word.example.hanzi)} simple={session.drill} />
+          <Answer
+            word={word}
+            onPlay={() => (session.mode === 'read' ? replay() : play())}
+            onExample={() => word.example && (session.mode === 'read' ? replay(word.example.hanzi) : play(word.example.hanzi))}
+            simple={session.drill}
+          />
         )}
 
         {item.teach && <Answer word={word} onPlay={() => play()} onExample={() => word.example && play(word.example.hanzi)} teach />}
@@ -352,7 +357,7 @@ export function Session() {
           </div>
         )}
 
-        <button type="button" className="play" onClick={replay}>
+        <button type="button" className="play" onClick={() => replay()}>
           <span>Слушать</span>
           <small>
             {voice.name} · {voice.note}
