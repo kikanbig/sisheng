@@ -15,52 +15,59 @@ const DEVICE_RATE: Record<Speed, number> = {
 }
 
 const memory = new Map<string, string>()
+const loading = new Map<string, Promise<string | undefined>>()
 let player: HTMLAudioElement | null = null
 let ticket = 0
 
 export type SpeakResult = 'neural' | 'device' | 'miss'
 
+function element() {
+  if (!player) {
+    player = new Audio()
+    player.preload = 'auto'
+    player.setAttribute('playsinline', 'true')
+  }
+  return player
+}
+
+export function unlockAudio() {
+  const audio = element()
+  if (audio.src) return
+  audio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA='
+  void audio.play().catch(() => undefined)
+}
+
 export function stopSpeech() {
   ticket += 1
-  dropPlayer()
+  player?.pause()
   if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel()
 }
 
-function dropPlayer() {
-  if (!player) return
-  player.pause()
-  player.src = ''
-  player = null
-}
-
-async function playUrl(url: string, mine: number): Promise<boolean> {
-  if (mine !== ticket) return false
-  const audio = new Audio(url)
-  audio.preload = 'auto'
-  const previous = player
-  player = audio
-  if (previous && previous !== audio) {
-    previous.pause()
-    previous.src = ''
-  }
-  if (mine !== ticket) {
-    if (player === audio) dropPlayer()
-    return false
-  }
+function playUrl(url: string, mine: number): Promise<boolean> {
+  if (mine !== ticket) return Promise.resolve(false)
+  const audio = element()
+  audio.src = url
   try {
-    await audio.play()
-    return mine === ticket && player === audio
-  } catch (error) {
-    if (mine !== ticket || player !== audio) return false
-    const name = error instanceof Error ? error.name : ''
-    if (name !== 'AbortError') throw error
-    try {
-      await audio.play()
-      return mine === ticket && player === audio
-    } catch {
-      return false
-    }
+    audio.currentTime = 0
+  } catch {
+    // адрес ещё не открылся — play всё равно стартует с начала
   }
+  const pending = audio.play()
+  if (!pending) return Promise.resolve(mine === ticket)
+  return pending.then(
+    () => mine === ticket,
+    async (error: unknown) => {
+      if (mine !== ticket) return false
+      const name = error instanceof Error ? error.name : ''
+      if (name !== 'AbortError' && name !== 'NotAllowedError') return false
+      try {
+        await audio.play()
+        return mine === ticket
+      } catch {
+        return false
+      }
+    },
+  )
 }
 
 function deviceSpeak(text: string, speed: Speed, phrase: boolean, mine: number) {
@@ -92,28 +99,35 @@ function cacheKey(text: string, voiceId: string, speed: Speed, mode: 'tones' | '
   return { phrase, key: `${voiceId}|${speed}|${phrase ? 'line' : mode}|${text}` }
 }
 
-async function loadUrl(key: string, text: string, voiceId: string, speed: Speed, mode: 'tones' | 'vocab', mine: number | null) {
+function loadUrl(key: string, text: string, voiceId: string, speed: Speed, mode: 'tones' | 'vocab', mine: number | null) {
   const known = memory.get(key)
-  if (known) return known
-  const cached = await readAudio(key).catch(() => undefined)
-  if (mine !== null && mine !== ticket) return undefined
-  if (cached) {
-    const url = URL.createObjectURL(cached)
-    memory.set(key, url)
-    return url
+  if (known) return Promise.resolve(known)
+  const existing = loading.get(key)
+  if (existing) {
+    return existing.then((url) => (mine !== null && mine !== ticket ? undefined : url))
   }
-  const response = await fetch('/api/tts', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ text, voice: voiceId, speed, mode }),
-  })
-  if (!response.ok) throw new Error(String(response.status))
-  const blob = await response.blob()
-  if (memory.has(key)) return memory.get(key)
-  const url = URL.createObjectURL(blob)
-  memory.set(key, url)
-  void cacheAudio(key, blob).catch(() => undefined)
-  return url
+  const job = (async () => {
+    const cached = await readAudio(key).catch(() => undefined)
+    if (cached) {
+      const url = URL.createObjectURL(cached)
+      memory.set(key, url)
+      return url
+    }
+    const response = await fetch('/api/tts', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text, voice: voiceId, speed, mode }),
+    })
+    if (!response.ok) throw new Error(String(response.status))
+    const blob = await response.blob()
+    if (memory.has(key)) return memory.get(key)
+    const url = URL.createObjectURL(blob)
+    memory.set(key, url)
+    void cacheAudio(key, blob).catch(() => undefined)
+    return url
+  })().finally(() => loading.delete(key))
+  loading.set(key, job)
+  return job.then((url) => (mine !== null && mine !== ticket ? undefined : url))
 }
 
 export function prefetch(text: string, voiceId: string, speed: Speed, mode: 'tones' | 'vocab' = 'vocab') {
@@ -134,6 +148,11 @@ export async function speak(
   if (!clean) return 'miss'
   const mine = ++ticket
   const { phrase, key } = cacheKey(clean, voiceId, speed, mode)
+  const known = memory.get(key)
+  if (known) {
+    const played = await playUrl(known, mine)
+    return played ? 'neural' : 'miss'
+  }
   try {
     const url = await loadUrl(key, clean, voiceId, speed, mode, mine)
     if (mine !== ticket || !url) return 'miss'

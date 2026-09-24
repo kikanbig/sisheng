@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { pickVoice, prefetch, speak, stopSpeech } from '../lib/audio'
+import { pickVoice, prefetch, speak, stopSpeech, unlockAudio } from '../lib/audio'
 import { voiceById } from '../lib/voices'
 import { dayWord } from '../lib/srs'
 import type { Grade } from '../types'
@@ -51,8 +51,9 @@ export function Session() {
   useEffect(() => {
     if (!item || !session) return
     const audioMode = session.mode === 'tones' ? 'tones' : 'vocab'
-    const upcoming = session.items[session.index + 1]
-    if (upcoming) prefetch(upcoming.word.hanzi, voiceFor(upcoming.word.id), store.settings.speed, audioMode)
+    for (const upcoming of session.items.slice(session.index + 1, session.index + 3)) {
+      prefetch(upcoming.word.hanzi, voiceFor(upcoming.word.id), store.settings.speed, audioMode)
+    }
     if (voiced.current === session.index) return
     const should = item.teach || session.mode === 'listen' || session.mode === 'tones' || session.mode === 'write' || session.mode === 'read'
     if (!should) return
@@ -191,6 +192,7 @@ export function Session() {
   }
 
   function swipeStart(event: React.PointerEvent) {
+    unlockAudio()
     if (!canSwipe || !event.isPrimary || performance.now() < swipeAt.current) return
     const target = event.target as HTMLElement
     if (target.closest('button, a, input, textarea')) return

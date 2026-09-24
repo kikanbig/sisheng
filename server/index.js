@@ -36,8 +36,26 @@ const VOICES = new Set([
 ])
 
 const audioCache = new Map()
-let ttsChain = Promise.resolve()
+const inflight = new Map()
 const hits = new Map()
+let ttsActive = 0
+const ttsWaiters = []
+
+function acquireTts() {
+  if (ttsActive < 3) {
+    ttsActive += 1
+    return Promise.resolve()
+  }
+  return new Promise((resolve) => ttsWaiters.push(resolve))
+}
+
+function releaseTts() {
+  ttsActive -= 1
+  const next = ttsWaiters.shift()
+  if (!next) return
+  ttsActive += 1
+  next()
+}
 
 function clientIp(req) {
   const forwarded = req.headers['x-forwarded-for']
@@ -82,24 +100,32 @@ function synthesize(text, voice, rate) {
   const key = `${voice}|${rate}|${text}`
   const cached = audioCache.get(key)
   if (cached) return Promise.resolve(cached)
-  const run = ttsChain.then(async () => {
-    const again = audioCache.get(key)
-    if (again) return again
-    const tts = new EdgeTTS(text, voice, { rate, volume: '+0%', pitch: '+0Hz' })
-    const result = await Promise.race([
-      tts.synthesize(),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 15000)),
-    ])
-    const buffer = Buffer.from(await result.audio.arrayBuffer())
-    if (buffer.length < 200) throw new Error('empty-audio')
-    audioCache.set(key, buffer)
-    if (audioCache.size > 500) {
-      const first = audioCache.keys().next().value
-      audioCache.delete(first)
+  const pending = inflight.get(key)
+  if (pending) return pending
+  const run = (async () => {
+    await acquireTts()
+    try {
+      const again = audioCache.get(key)
+      if (again) return again
+      const tts = new EdgeTTS(text, voice, { rate, volume: '+0%', pitch: '+0Hz' })
+      const result = await Promise.race([
+        tts.synthesize(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 12000)),
+      ])
+      const buffer = Buffer.from(await result.audio.arrayBuffer())
+      if (buffer.length < 200) throw new Error('empty-audio')
+      audioCache.set(key, buffer)
+      if (audioCache.size > 500) {
+        const first = audioCache.keys().next().value
+        audioCache.delete(first)
+      }
+      return buffer
+    } finally {
+      inflight.delete(key)
+      releaseTts()
     }
-    return buffer
-  })
-  ttsChain = run.then(() => undefined, () => undefined)
+  })()
+  inflight.set(key, run)
   return run
 }
 
