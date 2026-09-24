@@ -146,6 +146,8 @@ export function Session() {
 
   function settle(moved: number) {
     drag.current = null
+    dxRef.current = 0
+    setDx(0)
     if (moved > 88) {
       swiped.current = true
       commit('good')
@@ -154,10 +156,7 @@ export function Session() {
     if (moved < -88) {
       swiped.current = true
       commit('again')
-      return
     }
-    dxRef.current = 0
-    setDx(0)
   }
 
   function swipeStart(event: React.PointerEvent) {
@@ -212,8 +211,15 @@ export function Session() {
     }
   }
 
+  function onSessionClick(event: React.MouseEvent) {
+    if (revealed || cardItem.teach || round.mode === 'tones' || round.mode === 'write') return
+    const target = event.target as HTMLElement
+    if (target.closest('.session-bar, .speed-row')) return
+    show()
+  }
+
   return (
-    <section className="session">
+    <section className="session" onClick={onSessionClick}>
       <header className="session-bar">
         <button type="button" className="text-btn" onClick={store.endSession}>
           Закрыть
@@ -229,8 +235,9 @@ export function Session() {
       <SpeedPicker value={store.settings.speed} onChange={(speed) => store.updateSettings({ speed })} />
 
       <article
+        key={index}
         className="study-card"
-        style={dx !== 0 ? { transform: `translateX(${dx}px) rotate(${dx * 0.03}deg)` } : undefined}
+        style={dx !== 0 && seenIndex === index ? { transform: `translateX(${dx}px) rotate(${dx * 0.03}deg)` } : undefined}
         onPointerDown={swipeStart}
         onPointerMove={swipeMove}
         onPointerUp={swipeEnd}
@@ -320,15 +327,11 @@ export function Session() {
           ) : (
             <p className="fine center">Выбери контур, который услышал. Значение спрятано нарочно.</p>
           )
-        ) : revealed ? null : round.mode === 'write' ? (
+        ) : round.mode === 'write' && !revealed ? (
           <button type="button" className="ghost" onClick={show}>
             Пока не выходит
           </button>
-        ) : (
-          <button type="button" className="primary" onClick={show}>
-            Показать ответ
-          </button>
-        )}
+        ) : null}
       </footer>
     </section>
   )
