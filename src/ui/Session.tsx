@@ -51,7 +51,7 @@ export function Session() {
   useEffect(() => {
     if (!item || !session) return
     const teach = item.teach
-    const should = teach || session.mode === 'listen' || session.mode === 'tones'
+    const should = teach || session.mode === 'listen' || session.mode === 'tones' || session.mode === 'write'
     if (!should) return
     let live = true
     void speak(item.word.hanzi, voiceFor(item.word.id), store.settings.speed, session.mode === 'tones' ? 'tones' : 'vocab')
@@ -215,7 +215,7 @@ export function Session() {
           Закрыть
         </button>
         <p>
-          {MODE_TITLE[session.mode]} · {session.index + 1}/{session.items.length}
+          {session.drill ? 'Все слова' : MODE_TITLE[session.mode]} · {session.index + 1}/{session.items.length}
           {item.teach ? ' · знакомство' : ''}
         </p>
         <span className="voice-tag">
@@ -271,7 +271,7 @@ export function Session() {
         )}
 
         {!item.teach && session.mode !== 'tones' && revealed && (
-          <Answer word={word} onPlay={() => play()} onExample={() => word.example && play(word.example.hanzi)} />
+          <Answer word={word} onPlay={() => play()} onExample={() => word.example && play(word.example.hanzi)} simple={session.drill} />
         )}
 
         {item.teach && <Answer word={word} onPlay={() => play()} onExample={() => word.example && play(word.example.hanzi)} teach />}
@@ -317,20 +317,24 @@ export function Session() {
             <p className="fine center">Выбери контур, который услышал. Значение спрятано нарочно.</p>
           )
         ) : revealed ? (
-          <>
-            <div className="grades">
-              {GRADES.map((grade) => {
-                const next = reviewCard(card, grade.id)
-                return (
-                  <button key={grade.id} type="button" className={`grade ${grade.id}`} onClick={() => commit(grade.id)}>
-                    <b>{grade.label}</b>
-                    <small>{formatDelay(next.due - Date.now())}</small>
-                  </button>
-                )
-              })}
-            </div>
-            <p className="fine center swipe-hint">Или смахни карточку: вправо — помню, влево — снова.</p>
-          </>
+          session.drill ? (
+            <p className="fine center swipe-hint">Вправо — помню, влево — снова. Это запомнится.</p>
+          ) : (
+            <>
+              <div className="grades">
+                {GRADES.map((grade) => {
+                  const next = reviewCard(card, grade.id)
+                  return (
+                    <button key={grade.id} type="button" className={`grade ${grade.id}`} onClick={() => commit(grade.id)}>
+                      <b>{grade.label}</b>
+                      <small>{formatDelay(next.due - Date.now())}</small>
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="fine center swipe-hint">Или смахни карточку: вправо — помню, влево — снова.</p>
+            </>
+          )
         ) : round.mode === 'write' ? (
           <button type="button" className="ghost" onClick={show}>
             Пока не выходит
@@ -419,11 +423,13 @@ function Answer({
   onPlay,
   onExample,
   teach = false,
+  simple = false,
 }: {
   word: { hanzi: string; pinyin: string; ru: string; pos?: string; note?: string; example?: { hanzi: string; pinyin: string; ru: string } }
   onPlay: () => void
   onExample: () => void
   teach?: boolean
+  simple?: boolean
 }) {
   return (
     <div className="answer">
@@ -445,8 +451,8 @@ function Answer({
           <span>{word.example.ru}</span>
         </button>
       )}
-      <Strokes hanzi={word.hanzi} />
-      {!teach && <AiPanel key={`${word.hanzi}|${word.pinyin}`} word={{ ...word, id: word.hanzi, listId: '', kind: 'vocab' }} />}
+      {!simple && <Strokes hanzi={word.hanzi} />}
+      {!teach && !simple && <AiPanel key={`${word.hanzi}|${word.pinyin}`} word={{ ...word, id: word.hanzi, listId: '', kind: 'vocab' }} />}
     </div>
   )
 }

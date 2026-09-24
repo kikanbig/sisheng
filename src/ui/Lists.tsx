@@ -163,6 +163,11 @@ export function Lists() {
           <h2>{list.name}</h2>
           <p>{list.description}</p>
         </div>
+        {list.id !== 'tones' && words.length > 0 && !query.trim() && (
+          <button type="button" className="primary" onClick={() => store.startDrill(list.id)}>
+            Все карточки · {store.words.filter((word) => word.listId === list.id && word.kind !== 'tone').length}
+          </button>
+        )}
         <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Найти в списке" />
         <ul className="word-list">
           {words.slice(0, shown).map((word) => (

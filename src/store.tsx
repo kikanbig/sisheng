@@ -25,6 +25,7 @@ type Session = {
   mode: Mode
   again: number
   good: number
+  drill?: boolean
 }
 
 type Store = {
@@ -42,6 +43,7 @@ type Store = {
   updateSettings: (patch: Partial<Settings>) => void
   countsFor: (mode: Mode) => { due: number; fresh: number }
   startSession: (mode: Mode, ahead?: number) => boolean
+  startDrill: (listId: string) => boolean
   endSession: () => void
   grade: (word: Word, mode: Mode, grade: Grade) => void
   pushAgain: (item: QueueItem) => void
@@ -169,6 +171,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return true
   }
 
+  const startDrill = (listId: string) => {
+    const items = ordered
+      .filter((word) => word.listId === listId && word.kind !== 'tone')
+      .map((word) => ({ word, teach: false }))
+    if (!items.length) return false
+    setSession({ items, index: 0, mode: 'read', again: 0, good: 0, drill: true })
+    return true
+  }
+
   const rememberStudy = (wasNew: boolean, mode: Mode) => {
     const today = todayKey()
     setStats((current) => {
@@ -234,6 +245,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     updateSettings,
     countsFor,
     startSession,
+    startDrill,
     endSession: () => setSession(null),
     grade,
     pushAgain: (item) => {
