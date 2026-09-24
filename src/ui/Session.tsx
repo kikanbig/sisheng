@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { pickVoice, prefetch, speak, stopSpeech, unlockAudio } from '../lib/audio'
-import { voiceById } from '../lib/voices'
+import { VOICES, voiceById } from '../lib/voices'
 import { dayWord } from '../lib/srs'
 import type { Grade } from '../types'
 import { useStore } from '../store'
@@ -25,6 +25,7 @@ export function Session() {
   const [hint, setHint] = useState('')
   const [dx, setDx] = useState(0)
   const [attempt, setAttempt] = useState(0)
+  const [heardId, setHeardId] = useState<string | null>(null)
   const drag = useRef<{ x: number; y: number; id: number; active: boolean } | null>(null)
   const dxRef = useRef(0)
   const swiped = useRef(false)
@@ -46,6 +47,7 @@ export function Session() {
     dxRef.current = 0
     drag.current = null
     misses.current = 0
+    setHeardId(null)
   }
 
   useEffect(() => {
@@ -121,13 +123,22 @@ export function Session() {
   const word = item.word
   const round = session
   const cardItem = item
-  const voice = voiceById(voiceFor(word.id))
+  const voice = voiceById(heardId || voiceFor(word.id))
   const audioMode = round.mode === 'tones' ? 'tones' : 'vocab'
 
-  function play(text = word.hanzi) {
-    void speak(text, voiceFor(word.id), store.settings.speed, audioMode)
+  function play(text = word.hanzi, voiceId = voiceFor(word.id)) {
+    void speak(text, voiceId, store.settings.speed, audioMode)
       .then((kind) => setHint(kind === 'device' ? 'Говорит голос устройства. Нейросеть сейчас молчит.' : ''))
       .catch(() => setHint('Нажми кнопку звука ещё раз.'))
+  }
+
+  function replay() {
+    const pool = VOICES.map((item) => item.id)
+    const current = heardId || voiceFor(word.id)
+    const at = pool.indexOf(current)
+    const next = pool[(at + 1) % pool.length]
+    setHeardId(next)
+    play(word.hanzi, next)
   }
 
   function show() {
@@ -341,7 +352,7 @@ export function Session() {
           </div>
         )}
 
-        <button type="button" className="play" onClick={() => play()}>
+        <button type="button" className="play" onClick={replay}>
           <span>Слушать</span>
           <small>
             {voice.name} · {voice.note}
