@@ -32,7 +32,9 @@ export function Session() {
   const [hint, setHint] = useState('')
   const [dx, setDx] = useState(0)
   const drag = useRef<{ x: number; y: number; id: number; active: boolean } | null>(null)
+  const dxRef = useRef(0)
   const swiped = useRef(false)
+  const swipeAt = useRef(0)
   const voices = useRef(new Map<string, string>())
 
   const item = session && session.index < session.items.length ? session.items[session.index] : null
@@ -45,6 +47,7 @@ export function Session() {
     setPicked(null)
     setHint('')
     setDx(0)
+    dxRef.current = 0
     drag.current = null
   }
 
@@ -122,6 +125,10 @@ export function Session() {
 
   function show() {
     setRevealed(true)
+    drag.current = null
+    dxRef.current = 0
+    setDx(0)
+    swipeAt.current = performance.now() + 450
     if (round.mode !== 'listen' && round.mode !== 'tones' && round.mode !== 'read') play()
   }
 
@@ -145,18 +152,36 @@ export function Session() {
 
   const canSwipe = !cardItem.teach && round.mode !== 'tones' && revealed
 
+  function settle(moved: number) {
+    drag.current = null
+    if (moved > 88) {
+      swiped.current = true
+      commit('good')
+      return
+    }
+    if (moved < -88) {
+      swiped.current = true
+      commit('again')
+      return
+    }
+    dxRef.current = 0
+    setDx(0)
+  }
+
   function swipeStart(event: React.PointerEvent) {
-    if (!canSwipe || !event.isPrimary) return
+    if (!canSwipe || !event.isPrimary || performance.now() < swipeAt.current) return
+    const target = event.target as HTMLElement
+    if (target.closest('button, a, input, textarea')) return
     drag.current = { x: event.clientX, y: event.clientY, id: event.pointerId, active: false }
   }
 
   function swipeMove(event: React.PointerEvent) {
     const state = drag.current
-    if (!state) return
+    if (!state || event.pointerId !== state.id) return
     const moveX = event.clientX - state.x
     const moveY = event.clientY - state.y
     if (!state.active) {
-      if (Math.abs(moveX) < 14 || Math.abs(moveX) < Math.abs(moveY) * 1.2) return
+      if (Math.abs(moveX) < 18 || Math.abs(moveX) < Math.abs(moveY) * 1.4) return
       state.active = true
       try {
         event.currentTarget.setPointerCapture(state.id)
@@ -164,23 +189,14 @@ export function Session() {
         // указатель уже отпущен — жест всё равно продолжаем
       }
     }
+    dxRef.current = moveX
     setDx(moveX)
   }
 
-  function swipeEnd() {
+  function swipeEnd(event: React.PointerEvent) {
     const state = drag.current
-    drag.current = null
-    if (!state?.active) return
-    swiped.current = true
-    if (dx > 88) {
-      commit('good')
-      return
-    }
-    if (dx < -88) {
-      commit('again')
-      return
-    }
-    setDx(0)
+    if (!state || event.pointerId !== state.id) return
+    settle(state.active ? dxRef.current : 0)
   }
 
   keys.current = (event) => {
@@ -225,8 +241,8 @@ export function Session() {
       <SpeedPicker value={store.settings.speed} onChange={(speed) => store.updateSettings({ speed })} />
 
       <article
-        className={`study-card${drag.current?.active ? ' swiping' : ''}`}
-        style={canSwipe ? { transform: `translateX(${dx}px) rotate(${dx * 0.03}deg)` } : undefined}
+        className="study-card"
+        style={dx !== 0 ? { transform: `translateX(${dx}px) rotate(${dx * 0.03}deg)` } : undefined}
         onPointerDown={swipeStart}
         onPointerMove={swipeMove}
         onPointerUp={swipeEnd}

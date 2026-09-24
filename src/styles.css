@@ -285,12 +285,11 @@ h2 { font-size: 1.05rem; letter-spacing: -0.03em; }
   gap: 14px;
   min-height: 0;
   max-height: calc(100vh - 168px);
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   position: relative;
   touch-action: pan-y;
-  transition: transform 0.24s ease;
 }
-.study-card.swiping { transition: none; }
 .swipe-tags {
   position: sticky;
   top: 0;
