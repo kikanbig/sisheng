@@ -145,31 +145,38 @@ async function askModel(system, user, maxTokens) {
     error.status = 503
     throw error
   }
-  const response = await fetch('https://anymodel.org/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      authorization: `Bearer ${key}`,
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      model,
-      temperature: 0.4,
-      max_tokens: maxTokens,
-      messages: [
-        { role: 'system', content: system },
-        { role: 'user', content: user },
-      ],
-    }),
-  })
-  const payload = await response.json().catch(() => ({}))
-  if (!response.ok) {
-    const error = new Error(payload?.error?.message || 'ai-failed')
-    error.status = response.status
-    throw error
+  const names = model === 'ag/gemini-2.5-flash' ? [model] : [model, 'ag/gemini-2.5-flash']
+  let last = new Error('ai-failed')
+  for (const name of names) {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const response = await fetch('https://anymodel.org/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${key}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: name,
+          temperature: 0.4,
+          max_tokens: maxTokens,
+          messages: [
+            { role: 'system', content: system },
+            { role: 'user', content: user },
+          ],
+        }),
+      })
+      const payload = await response.json().catch(() => ({}))
+      if (response.ok) {
+        const content = payload?.choices?.[0]?.message?.content
+        if (!content) throw new Error('empty-ai')
+        return stripJson(content)
+      }
+      last = new Error(payload?.error?.message || 'ai-failed')
+      last.status = response.status
+      if (response.status !== 502 && response.status !== 503) throw last
+    }
   }
-  const content = payload?.choices?.[0]?.message?.content
-  if (!content) throw new Error('empty-ai')
-  return stripJson(content)
+  throw last
 }
 
 const SYSTEM = [
