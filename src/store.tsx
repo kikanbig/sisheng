@@ -175,6 +175,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const items = ordered
       .filter((word) => word.listId === listId && word.kind !== 'tone')
       .map((word) => ({ word, teach: false }))
+    for (let i = items.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      const swap = items[i]
+      items[i] = items[j]
+      items[j] = swap
+    }
     if (!items.length) return false
     setSession({ items, index: 0, mode: 'read', again: 0, good: 0, drill: true })
     return true

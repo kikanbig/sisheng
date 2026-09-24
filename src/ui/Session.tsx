@@ -151,7 +151,7 @@ export function Session() {
     commit(correct ? 'good' : 'again')
   }
 
-  const canSwipe = !cardItem.teach && round.mode !== 'tones' && revealed
+  const canSwipe = !cardItem.teach && round.mode !== 'tones' && (revealed || round.mode !== 'write')
 
   function settle(moved: number) {
     drag.current = null
@@ -221,7 +221,7 @@ export function Session() {
   }
 
   function onSessionClick(event: React.MouseEvent) {
-    if (revealed || cardItem.teach || round.mode === 'tones' || round.mode === 'write') return
+    if (swiped.current || revealed || cardItem.teach || round.mode === 'tones' || round.mode === 'write') return
     const target = event.target as HTMLElement
     if (target.closest('.session-bar, .speed-row')) return
     show()
