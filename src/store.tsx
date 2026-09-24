@@ -259,7 +259,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (!current) return current
         const items = current.items.slice()
         const ahead = items.slice(current.index + 1).filter((row) => row.word.id === item.word.id).length
-        if (ahead < 2) items.splice(Math.min(items.length, current.index + 4), 0, { ...item, teach: false })
+        const gap = 10 + Math.floor(Math.random() * 11)
+        if (ahead < 2) items.splice(Math.min(items.length, current.index + gap), 0, { ...item, teach: false })
         return { ...current, items }
       })
     },
