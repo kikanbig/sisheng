@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { pickVoice, speak, stopSpeech } from '../lib/audio'
 import { voiceById } from '../lib/voices'
-import { cardId, dayWord, formatDelay, freshCard, reviewCard } from '../lib/srs'
+import { dayWord } from '../lib/srs'
 import type { Grade } from '../types'
 import { useStore } from '../store'
 import { AiPanel } from './AiPanel'
@@ -16,13 +16,6 @@ const MODE_TITLE = {
   tones: 'Тоны',
   write: 'Черты',
 } as const
-
-const GRADES: { id: Grade; label: string }[] = [
-  { id: 'again', label: 'Снова' },
-  { id: 'hard', label: 'Трудно' },
-  { id: 'good', label: 'Помню' },
-  { id: 'easy', label: 'Легко' },
-]
 
 export function Session() {
   const store = useStore()
@@ -115,7 +108,6 @@ export function Session() {
   const cardItem = item
   const voice = voiceById(voiceFor(word.id))
   const audioMode = round.mode === 'tones' ? 'tones' : 'vocab'
-  const card = store.cards.find((row) => row.id === cardId(word.id, round.mode)) ?? freshCard(word.id, round.mode)
 
   function play(text = word.hanzi) {
     void speak(text, voiceFor(word.id), store.settings.speed, audioMode)
@@ -210,10 +202,6 @@ export function Session() {
       event.preventDefault()
       show()
     }
-    if (!cardItem.teach && round.mode !== 'tones' && revealed && ['1', '2', '3', '4'].includes(event.key)) {
-      event.preventDefault()
-      commit(GRADES[Number(event.key) - 1].id)
-    }
     if (canSwipe && event.key === 'ArrowRight') {
       event.preventDefault()
       commit('good')
@@ -257,10 +245,10 @@ export function Session() {
         {canSwipe && (
           <div className="swipe-tags">
             <span className="swipe-tag yes" style={{ opacity: Math.min(1, Math.max(0, dx) / 88) }}>
-              Помню
+              Реже
             </span>
             <span className="swipe-tag no" style={{ opacity: Math.min(1, Math.max(0, -dx) / 88) }}>
-              Снова
+              Ещё раз
             </span>
           </div>
         )}
@@ -332,26 +320,7 @@ export function Session() {
           ) : (
             <p className="fine center">Выбери контур, который услышал. Значение спрятано нарочно.</p>
           )
-        ) : revealed ? (
-          session.drill ? (
-            <p className="fine center swipe-hint">Вправо — помню, влево — снова. Это запомнится.</p>
-          ) : (
-            <>
-              <div className="grades">
-                {GRADES.map((grade) => {
-                  const next = reviewCard(card, grade.id)
-                  return (
-                    <button key={grade.id} type="button" className={`grade ${grade.id}`} onClick={() => commit(grade.id)}>
-                      <b>{grade.label}</b>
-                      <small>{formatDelay(next.due - Date.now())}</small>
-                    </button>
-                  )
-                })}
-              </div>
-              <p className="fine center swipe-hint">Или смахни карточку: вправо — помню, влево — снова.</p>
-            </>
-          )
-        ) : round.mode === 'write' ? (
+        ) : revealed ? null : round.mode === 'write' ? (
           <button type="button" className="ghost" onClick={show}>
             Пока не выходит
           </button>

@@ -38,22 +38,6 @@ export function reviewCard(card: SrsCard, grade: Grade, now = Date.now()): SrsCa
 
   const learning = card.state === 'new' || card.state === 'learning'
   if (learning) {
-    if (grade === 'hard') {
-      next.state = 'learning'
-      next.step = 0
-      next.interval = 0
-      next.due = now + 8 * 60_000
-      return next
-    }
-    if (grade === 'easy') {
-      next.state = 'review'
-      next.step = 0
-      next.ease = ease + 0.15
-      next.reps = 1
-      next.interval = 3
-      next.due = now + 3 * DAY
-      return next
-    }
     if ((card.step || 0) < 1) {
       next.state = 'learning'
       next.step = 1
@@ -70,17 +54,8 @@ export function reviewCard(card: SrsCard, grade: Grade, now = Date.now()): SrsCa
   }
 
   const interval = Math.max(1, card.interval || 1)
-  if (grade === 'hard') {
-    next.ease = Math.max(1.3, ease - 0.15)
-    next.interval = Math.max(1, Math.round(interval * 1.2))
-  } else if (grade === 'good') {
-    next.interval = Math.max(1, Math.round(interval * ease))
-    next.reps = (card.reps || 0) + 1
-  } else {
-    next.ease = ease + 0.15
-    next.interval = Math.max(interval + 1, Math.round(interval * ease * 1.3))
-    next.reps = (card.reps || 0) + 1
-  }
+  next.interval = Math.max(interval + 1, Math.round(interval * 1.4))
+  next.reps = (card.reps || 0) + 1
   next.state = 'review'
   next.due = now + next.interval * DAY
   return next

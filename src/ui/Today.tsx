@@ -39,20 +39,6 @@ export function Today() {
 
   return (
     <section className="screen">
-      {!store.settings.onboardingDone && (
-        <div className="onboarding">
-          <p className="eyebrow">как заниматься</p>
-          <ol>
-            <li>Один экран проверяет одно: чтение, слух, перевод или тон.</li>
-            <li>Сначала вспомни сам. Пиньинь и перевод — только после ответа.</li>
-            <li>Восемь новых слов в день держатся лучше, чем пятьдесят за вечер.</li>
-          </ol>
-          <button type="button" className="primary" onClick={() => store.updateSettings({ onboardingDone: true })}>
-            Понятно
-          </button>
-        </div>
-      )}
-
       <p className="eyebrow">{hello}</p>
       <h1>
         {ready === 0
@@ -63,8 +49,6 @@ export function Today() {
               ? `${counts.due} к повторению`
               : `${counts.fresh} новых слов`}
       </h1>
-      <p className="lead">Один навык за раз. Сначала ответ, потом пиньинь.</p>
-
       <div className="mode-grid">
         {MODES.map((item) => {
           const row = store.countsFor(item.id)
