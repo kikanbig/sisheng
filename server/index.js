@@ -282,7 +282,8 @@ app.post('/api/ai', async (req, res) => {
     res.status(400).json({ error: 'Неизвестный запрос.' })
   } catch (error) {
     const status = error.status || 502
-    const message = status === 503 ? 'ИИ не подключён на сервере.' : 'Сейчас не получилось спросить модель. Попробуй ещё раз.'
+    const missing = error instanceof Error && error.message === 'no-key'
+    const message = missing ? 'ИИ не подключён на сервере.' : 'Модель сейчас занята. Нажми ещё раз через несколько секунд.'
     console.error('ai', error instanceof Error ? error.message : error)
     res.status(status).json({ error: message })
   }
