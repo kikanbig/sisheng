@@ -20,6 +20,10 @@ let ticket = 0
 
 export function stopSpeech() {
   ticket += 1
+  silence()
+}
+
+function silence() {
   if (player) {
     player.pause()
     player.src = ''
@@ -30,14 +34,19 @@ export function stopSpeech() {
 
 async function playUrl(url: string, mine: number) {
   if (mine !== ticket) return
-  if (player) {
-    player.pause()
-    player.src = ''
-  }
+  silence()
+  if (mine !== ticket) return
   const audio = new Audio(url)
   player = audio
   audio.preload = 'auto'
-  await audio.play()
+  try {
+    await audio.play()
+  } catch (error) {
+    if (mine !== ticket) return
+    const name = error instanceof Error ? error.name : ''
+    if (name === 'AbortError') return
+    throw error
+  }
 }
 
 function deviceSpeak(text: string, speed: Speed, phrase: boolean, mine: number) {

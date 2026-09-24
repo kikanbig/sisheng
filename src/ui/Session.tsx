@@ -28,6 +28,7 @@ export function Session() {
   const dxRef = useRef(0)
   const swiped = useRef(false)
   const swipeAt = useRef(0)
+  const voiced = useRef(-1)
   const voices = useRef(new Map<string, string>())
 
   const item = session && session.index < session.items.length ? session.items[session.index] : null
@@ -46,9 +47,11 @@ export function Session() {
 
   useEffect(() => {
     if (!item || !session) return
+    if (voiced.current === session.index) return
     const teach = item.teach
     const should = teach || session.mode === 'listen' || session.mode === 'tones' || session.mode === 'write' || session.mode === 'read'
     if (!should) return
+    voiced.current = session.index
     let live = true
     void speak(item.word.hanzi, voiceFor(item.word.id), store.settings.speed, session.mode === 'tones' ? 'tones' : 'vocab')
       .then((kind) => {
@@ -60,9 +63,10 @@ export function Session() {
       })
     return () => {
       live = false
-      stopSpeech()
     }
   }, [item?.word.id, item?.teach, session?.index, session?.mode])
+
+  useEffect(() => () => stopSpeech(), [])
 
   const keys = useRef<(event: KeyboardEvent) => void>(() => {})
 
@@ -125,6 +129,11 @@ export function Session() {
   }
 
   function commit(value: Grade) {
+    const next = round.items[round.index + 1]
+    if (next) {
+      voiced.current = round.index + 1
+      void speak(next.word.hanzi, voiceFor(next.word.id), store.settings.speed, round.mode === 'tones' ? 'tones' : 'vocab')
+    }
     store.grade(word, round.mode, value)
     if (value === 'again') store.pushAgain(cardItem)
     store.advance()
@@ -219,7 +228,14 @@ export function Session() {
   }
 
   return (
-    <section className="session" onClick={onSessionClick}>
+    <section
+      className="session"
+      onClick={onSessionClick}
+      onPointerDown={swipeStart}
+      onPointerMove={swipeMove}
+      onPointerUp={swipeEnd}
+      onPointerCancel={swipeEnd}
+    >
       <header className="session-bar">
         <button type="button" className="text-btn" onClick={store.endSession}>
           Закрыть
@@ -238,10 +254,6 @@ export function Session() {
         key={index}
         className="study-card"
         style={dx !== 0 && seenIndex === index ? { transform: `translateX(${dx}px) rotate(${dx * 0.03}deg)` } : undefined}
-        onPointerDown={swipeStart}
-        onPointerMove={swipeMove}
-        onPointerUp={swipeEnd}
-        onPointerCancel={swipeEnd}
         onClickCapture={(event) => {
           if (!swiped.current) return
           swiped.current = false
