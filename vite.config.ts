@@ -1,9 +1,35 @@
-import { defineConfig } from 'vite'
+import fs from 'node:fs'
+import path from 'node:path'
+import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
+function sceneList(): Plugin {
+  const virtual = '\0virtual:scenes'
+  const source = () => {
+    const dir = path.resolve('public/art/scenes')
+    const files = fs.existsSync(dir)
+      ? fs
+          .readdirSync(dir)
+          .filter((name) => name.endsWith('.webp'))
+          .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+      : []
+    return `export const SCENES = ${JSON.stringify(files.map((name) => `/art/scenes/${name}`))}`
+  }
+  return {
+    name: 'scene-list',
+    resolveId(id) {
+      if (id === 'virtual:scenes') return virtual
+    },
+    load(id) {
+      if (id === virtual) return source()
+    },
+  }
+}
+
 export default defineConfig({
   plugins: [
+    sceneList(),
     react(),
     VitePWA({
       registerType: 'autoUpdate',
@@ -26,6 +52,7 @@ export default defineConfig({
       workbox: {
         navigateFallback: '/index.html',
         globPatterns: ['**/*.{js,css,html,svg,png,webp,woff2}'],
+        globIgnores: ['**/art/scenes/**'],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
@@ -33,6 +60,14 @@ export default defineConfig({
             options: {
               cacheName: 'fonts',
               expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 },
+            },
+          },
+          {
+            urlPattern: /\/art\/scenes\/\d+\.webp$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'scenes',
+              expiration: { maxEntries: 48, maxAgeSeconds: 60 * 60 * 24 * 30 },
             },
           },
           {

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { pickVoice, prefetch, speak, stopSpeech, unlockAudio } from '../lib/audio'
 import { VOICES, voiceById } from '../lib/voices'
+import { pickScene } from '../lib/scenes'
 import { dayWord } from '../lib/srs'
 import type { Grade } from '../types'
 import { useStore } from '../store'
@@ -8,7 +9,6 @@ import { AiPanel } from './AiPanel'
 import { Contour, Pinyin, syllableTone } from './Pinyin'
 import { SpeedPicker } from './Speed'
 import { StrokeQuiz, Strokes } from './Strokes'
-import { sceneFor } from '../lib/scenes'
 
 const MODE_TITLE = {
   read: 'Чтение',
@@ -27,6 +27,7 @@ export function Session() {
   const [dx, setDx] = useState(0)
   const [attempt, setAttempt] = useState(0)
   const [heardId, setHeardId] = useState<string | null>(null)
+  const [scene, setScene] = useState(() => pickScene(null))
   const drag = useRef<{ x: number; y: number; id: number; active: boolean } | null>(null)
   const dxRef = useRef(0)
   const swiped = useRef(false)
@@ -41,6 +42,7 @@ export function Session() {
   const [seenIndex, setSeenIndex] = useState(index)
   if (seenIndex !== index) {
     setSeenIndex(index)
+    setScene((prev) => pickScene(prev))
     setRevealed(false)
     setPicked(null)
     setHint('')
@@ -290,8 +292,10 @@ export function Session() {
         key={index}
         className="study-card"
         style={{
-          ['--scene' as string]: `url("${sceneFor(word.id)}")`,
-          ...(dx !== 0 && seenIndex === index ? { transform: `translateX(${dx}px) rotate(${dx * 0.03}deg)` } : {}),
+          ...(scene ? { ['--scene' as string]: `url('${scene}')` } : {}),
+          ...(dx !== 0 && seenIndex === index
+            ? { transform: `translateX(${dx}px) rotate(${dx * 0.03}deg)` }
+            : {}),
         }}
         onClickCapture={(event) => {
           if (!swiped.current) return
