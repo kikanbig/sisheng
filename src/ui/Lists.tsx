@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { speak, unlockAudio } from '../lib/audio'
 import { normalizePinyin } from '../lib/pinyin'
 import { useStore } from '../store'
 import type { Word } from '../types'
@@ -35,6 +36,11 @@ export function Lists() {
 
   if (!list) return null
   const custom = !list.builtin
+
+  function hear(text: string) {
+    unlockAudio()
+    void speak(text, store.settings.voice, store.settings.speed, list.id === 'tones' ? 'tones' : 'vocab')
+  }
 
   async function lookup() {
     setBusy('lookup')
@@ -177,11 +183,16 @@ export function Lists() {
                 <Pinyin text={word.pinyin} />
                 <span>{word.ru}</span>
               </div>
-              {word.id.startsWith('c:') && (
-                <button type="button" className="text-btn" onClick={() => store.removeWord(word.id)}>
-                  Убрать
+              <span className="word-actions">
+                <button type="button" className="hear" aria-label={`Слушать ${word.hanzi}`} onClick={() => hear(word.hanzi)}>
+                  <Speaker />
                 </button>
-              )}
+                {word.id.startsWith('c:') && (
+                  <button type="button" className="text-btn" onClick={() => store.removeWord(word.id)}>
+                    Убрать
+                  </button>
+                )}
+              </span>
             </li>
           ))}
         </ul>
@@ -246,6 +257,9 @@ export function Lists() {
                       <Pinyin text={word.pinyin} />
                       <span>{word.ru}</span>
                     </div>
+                    <button type="button" className="hear" aria-label={`Слушать ${word.hanzi}`} onClick={() => hear(word.hanzi)}>
+                      <Speaker />
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -266,5 +280,15 @@ export function Lists() {
       )}
       {error && <p className="warn">{error}</p>}
     </section>
+  )
+}
+
+function Speaker() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 10v4h3l4 3V7L7 10H4z" fill="currentColor" />
+      <path d="M16 9.5a3.5 3.5 0 0 1 0 5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M18.2 7.2a6.5 6.5 0 0 1 0 9.6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
   )
 }

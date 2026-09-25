@@ -488,6 +488,19 @@ input {
   border-bottom: 1px solid var(--line);
 }
 .word-list li div { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+.word-actions { display: flex; align-items: center; gap: 4px; flex: none; }
+.hear {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: #f6f1e6;
+  color: var(--pine);
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.hear svg { width: 16px; height: 16px; }
 .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .stat-grid article { border-radius: 20px; padding: 14px; display: grid; gap: 4px; }
 .stat-grid b { font-size: 1.6rem; letter-spacing: -0.04em; }
