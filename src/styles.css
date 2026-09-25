@@ -375,6 +375,7 @@ h2 { font-size: 1.05rem; letter-spacing: -0.03em; }
   max-width: 46ch;
 }
 .example {
+  touch-action: pan-y;
   width: min(100%, 460px);
   text-align: left;
   display: grid;

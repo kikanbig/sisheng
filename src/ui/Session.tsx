@@ -28,9 +28,10 @@ export function Session() {
   const [attempt, setAttempt] = useState(0)
   const [heardId, setHeardId] = useState<string | null>(null)
   const [scene, setScene] = useState(() => pickScene(null))
-  const drag = useRef<{ x: number; y: number; id: number; active: boolean } | null>(null)
+  const drag = useRef<{ x: number; y: number; id: number; active: boolean; example: boolean } | null>(null)
   const dxRef = useRef(0)
   const swiped = useRef(false)
+  const swallowClick = useRef(false)
   const swipeAt = useRef(0)
   const voiced = useRef(-1)
   const misses = useRef(0)
@@ -209,8 +210,16 @@ export function Session() {
     unlockAudio()
     if (!canSwipe || !event.isPrimary || performance.now() < swipeAt.current) return
     const target = event.target as HTMLElement
-    if (target.closest('button, a, input, textarea')) return
-    drag.current = { x: event.clientX, y: event.clientY, id: event.pointerId, active: false }
+    const example = Boolean(target.closest('.example'))
+    if (!example && target.closest('button, a, input, textarea, canvas')) return
+    drag.current = { x: event.clientX, y: event.clientY, id: event.pointerId, active: false, example }
+    if (example) {
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId)
+      } catch {
+        // указатель уже отпущен — жест всё равно продолжаем
+      }
+    }
   }
 
   function swipeMove(event: React.PointerEvent) {
@@ -234,7 +243,11 @@ export function Session() {
   function swipeEnd(event: React.PointerEvent) {
     const state = drag.current
     if (!state || event.pointerId !== state.id) return
+    const tapped = !state.active
     settle(state.active ? dxRef.current : 0)
+    if (!tapped || state.example || revealed || cardItem.teach || round.mode === 'tones' || round.mode === 'write') return
+    swallowClick.current = true
+    show()
   }
 
   keys.current = (event) => {
@@ -269,6 +282,13 @@ export function Session() {
     <section
       className="session"
       onClick={onSessionClick}
+      onClickCapture={(event) => {
+        if (!swiped.current && !swallowClick.current) return
+        swiped.current = false
+        swallowClick.current = false
+        event.preventDefault()
+        event.stopPropagation()
+      }}
       onPointerDown={swipeStart}
       onPointerMove={swipeMove}
       onPointerUp={swipeEnd}
@@ -297,13 +317,7 @@ export function Session() {
             ? { transform: `translateX(${dx}px) rotate(${dx * 0.03}deg)` }
             : {}),
         }}
-        onClickCapture={(event) => {
-          if (!swiped.current) return
-          swiped.current = false
-          event.preventDefault()
-          event.stopPropagation()
-        }}
-      >
+        >
         {canSwipe && (
           <div className="swipe-tags">
             <span className="swipe-tag yes" style={{ opacity: Math.min(1, Math.max(0, dx) / 88) }}>
