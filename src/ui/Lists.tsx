@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { speak, unlockAudio } from '../lib/audio'
 import { normalizePinyin } from '../lib/pinyin'
 import { useStore } from '../store'
@@ -10,12 +10,7 @@ export function Lists() {
   const [openId, setOpenId] = useState('hsk1')
   const [query, setQuery] = useState('')
   const [name, setName] = useState('')
-  const [hanzi, setHanzi] = useState('')
-  const [pinyin, setPinyin] = useState('')
-  const [ru, setRu] = useState('')
-  const [exH, setExH] = useState('')
-  const [exP, setExP] = useState('')
-  const [exR, setExR] = useState('')
+  const [entry, setEntry] = useState('')
   const [topic, setTopic] = useState('')
   const [drafts, setDrafts] = useState<Word[]>([])
   const [busy, setBusy] = useState('')
@@ -42,23 +37,49 @@ export function Lists() {
     void speak(text, store.settings.voice, store.settings.speed, list.id === 'tones' ? 'tones' : 'vocab')
   }
 
-  async function lookup() {
+  function takeWords(rows: unknown) {
+    const listRows = Array.isArray(rows) ? rows : []
+    const next: Word[] = []
+    for (const row of listRows) {
+      if (!row || typeof row !== 'object') continue
+      const item = row as { hanzi?: unknown; pinyin?: unknown; ru?: unknown; example?: { hanzi?: unknown; pinyin?: unknown; ru?: unknown } }
+      if (typeof item.hanzi !== 'string' || !/\p{Script=Han}/u.test(item.hanzi)) continue
+      const example = item.example || {}
+      const word: Word = {
+        id: `c:${crypto.randomUUID()}`,
+        listId: list.id,
+        hanzi: item.hanzi.trim(),
+        pinyin: normalizePinyin(String(item.pinyin || '')),
+        ru: String(item.ru || '').trim(),
+        kind: 'vocab',
+        example:
+          typeof example.hanzi === 'string' && example.hanzi.trim() && typeof example.ru === 'string' && example.ru.trim()
+            ? { hanzi: example.hanzi.trim(), pinyin: normalizePinyin(String(example.pinyin || '')), ru: example.ru.trim() }
+            : undefined,
+      }
+      if (word.pinyin && word.ru) next.push(word)
+    }
+    return next.slice(0, 8)
+  }
+
+  async function addEntry(event: FormEvent) {
+    event.preventDefault()
+    const query = entry.trim()
+    if (!query) return
     setBusy('lookup')
     setError('')
     try {
       const response = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ kind: 'lookup', hanzi }),
+        body: JSON.stringify({ kind: 'lookup', query }),
       })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'Ошибка')
-      if (typeof data.pinyin === 'string') setPinyin(normalizePinyin(data.pinyin))
-      if (typeof data.ru === 'string') setRu(data.ru)
-      const example = data.example || {}
-      if (typeof example.hanzi === 'string') setExH(example.hanzi)
-      if (typeof example.pinyin === 'string') setExP(normalizePinyin(example.pinyin))
-      if (typeof example.ru === 'string') setExR(example.ru)
+      const [word] = takeWords([data])
+      if (!word) throw new Error('Не разобрал слово. Напиши иероглиф или пиньинь ещё раз.')
+      store.addWord(word)
+      setEntry('')
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Не вышло')
     } finally {
@@ -66,34 +87,27 @@ export function Lists() {
     }
   }
 
-  function saveWord() {
-    if (!/\p{Script=Han}/u.test(hanzi)) {
-      setError('В поле слова нужен хотя бы один иероглиф.')
-      return
-    }
-    const word: Word = {
-      id: `c:${crypto.randomUUID()}`,
-      listId: list.id,
-      hanzi: hanzi.trim(),
-      pinyin: normalizePinyin(pinyin),
-      ru: ru.trim(),
-      kind: 'vocab',
-      example: exH.trim()
-        ? { hanzi: exH.trim(), pinyin: normalizePinyin(exP), ru: exR.trim() }
-        : undefined,
-    }
-    if (!word.pinyin || !word.ru) {
-      setError('Нужны пиньинь и русский перевод.')
-      return
-    }
-    store.addWord(word)
-    setHanzi('')
-    setPinyin('')
-    setRu('')
-    setExH('')
-    setExP('')
-    setExR('')
+  async function scanPhoto(file: File | undefined) {
+    if (!file) return
+    setBusy('scan')
     setError('')
+    try {
+      const image = await shrinkPhoto(file)
+      const response = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ kind: 'scan', image }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Ошибка')
+      const words = takeWords(data.words)
+      if (!words.length) throw new Error('На фото не вижу китайского слова.')
+      for (const word of words) store.addWord(word)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Не вышло')
+    } finally {
+      setBusy('')
+    }
   }
 
   async function generate() {
@@ -211,23 +225,32 @@ export function Lists() {
       {list.id !== 'tones' && (
         <div className="block" data-art="ink">
           <h2>Добавить слово</h2>
-          <div className="form-grid">
-            <input value={hanzi} onChange={(event) => setHanzi(event.target.value)} placeholder="Иероглифы" maxLength={16} />
-            <input value={pinyin} onChange={(event) => setPinyin(event.target.value)} placeholder="nǐ hǎo или ni3 hao3" maxLength={80} />
-            <input value={ru} onChange={(event) => setRu(event.target.value)} placeholder="По-русски" maxLength={80} />
-            <input value={exH} onChange={(event) => setExH(event.target.value)} placeholder="Пример иероглифами" maxLength={40} />
-            <input value={exP} onChange={(event) => setExP(event.target.value)} placeholder="Пиньинь примера" maxLength={80} />
-            <input value={exR} onChange={(event) => setExR(event.target.value)} placeholder="Перевод примера" maxLength={120} />
-          </div>
-          <div className="row-toggles">
-            <button type="button" className="primary" onClick={saveWord}>
-              В список
+          <p>Иероглиф или пиньинь. Перевод, чтение и пример подберу сам.</p>
+          <form className="inline-form" onSubmit={(event) => void addEntry(event)}>
+            <input
+              value={entry}
+              onChange={(event) => setEntry(event.target.value)}
+              placeholder="爱 или ai4"
+              maxLength={40}
+            />
+            <button type="submit" className="primary" disabled={!entry.trim() || !!busy}>
+              {busy === 'lookup' ? 'Смотрю…' : 'В список'}
             </button>
-            <button type="button" className="ghost" disabled={!hanzi.trim() || !!busy} onClick={() => void lookup()}>
-              {busy === 'lookup' ? 'Смотрю…' : 'Заполнить по иероглифу'}
-            </button>
-          </div>
-          <p className="fine">Пиньинь можно с цифрами: ma1 ma3. Слоги разделятся сами.</p>
+          </form>
+          <label className={`ghost file${busy ? ' off' : ''}`}>
+            {busy === 'scan' ? 'Смотрю фото…' : 'Сфотографировать'}
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              disabled={!!busy}
+              onChange={(event) => {
+                const file = event.target.files?.[0]
+                event.target.value = ''
+                void scanPhoto(file)
+              }}
+            />
+          </label>
         </div>
       )}
 
@@ -281,6 +304,19 @@ export function Lists() {
       {error && <p className="warn">{error}</p>}
     </section>
   )
+}
+
+async function shrinkPhoto(file: File) {
+  const bitmap = await createImageBitmap(file)
+  const scale = Math.min(1, 1280 / Math.max(bitmap.width, bitmap.height))
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale))
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale))
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('Фото не открылось.')
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+  bitmap.close()
+  return canvas.toDataURL('image/jpeg', 0.72)
 }
 
 function Speaker() {

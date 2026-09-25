@@ -138,7 +138,7 @@ function stripJson(text) {
   return JSON.parse(raw.slice(start, end + 1))
 }
 
-async function askModel(system, user, maxTokens) {
+async function askModel(system, user, maxTokens, image) {
   const key = process.env.ANYMODEL_API_KEY
   if (!key) {
     const error = new Error('no-key')
@@ -161,7 +161,15 @@ async function askModel(system, user, maxTokens) {
           max_tokens: maxTokens,
           messages: [
             { role: 'system', content: system },
-            { role: 'user', content: user },
+            {
+              role: 'user',
+              content: image
+                ? [
+                    { type: 'text', text: user },
+                    { type: 'image_url', image_url: { url: image } },
+                  ]
+                : user,
+            },
           ],
         }),
       })
@@ -189,7 +197,7 @@ const SYSTEM = [
 
 const app = express()
 app.set('trust proxy', 1)
-app.use(express.json({ limit: '24kb' }))
+app.use(express.json({ limit: '2mb' }))
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, ai: Boolean(process.env.ANYMODEL_API_KEY), model })
@@ -267,11 +275,30 @@ app.post('/api/ai', async (req, res) => {
       return
     }
     if (kind === 'lookup') {
-      const hanzi = String(req.body.hanzi || '').slice(0, 16)
+      const query = String(req.body.query || req.body.hanzi || '').replace(/\s+/g, ' ').trim().slice(0, 40)
+      if (!query) {
+        res.status(400).json({ error: 'Напиши иероглиф или пиньинь.' })
+        return
+      }
       const data = await askModel(
         SYSTEM,
-        `Самое частое учебное значение слова «${hanzi}». JSON: {"pinyin":"","ru":"","pos":"","note":"","example":{"hanzi":"","pinyin":"","ru":""}}`,
+        `Ввод ученика: «${query}». Это иероглифы либо пиньинь, с тонами или с цифрами. Одно учебное слово. Если пиньинь неоднозначен — самое частое. JSON: {"hanzi":"","pinyin":"","ru":"","example":{"hanzi":"","pinyin":"","ru":""}}`,
         400,
+      )
+      res.json(data)
+      return
+    }
+    if (kind === 'scan') {
+      const image = String(req.body.image || '')
+      if (!/^data:image\/(?:jpeg|png|webp);base64,/.test(image) || image.length > 1_400_000) {
+        res.status(400).json({ error: 'Нужна фотография поменьше.' })
+        return
+      }
+      const data = await askModel(
+        SYSTEM,
+        'На фото китайский текст. Выпиши слова, которые стоит учить, не больше 8. Одно слово или короткая фраза — одна карточка, не дроби фразу на иероглифы. Если китайского текста нет, верни пустой список. JSON: {"words":[{"hanzi":"","pinyin":"","ru":"","example":{"hanzi":"","pinyin":"","ru":""}}]}',
+        900,
+        image,
       )
       res.json(data)
       return

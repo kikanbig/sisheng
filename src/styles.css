@@ -245,7 +245,7 @@ h2 { font-size: 1.05rem; letter-spacing: -0.03em; }
 .primary { background: var(--pine); color: #f6f1e6; border-radius: 999px; }
 .primary.xl { width: 100%; padding: 16px 18px; font-size: 1.05rem; }
 .ghost { background: transparent; border: 1px solid var(--line); }
-.ghost.file { display: inline-grid; place-items: center; position: relative; overflow: hidden; }
+.ghost.file { display: grid; place-items: center; position: relative; overflow: hidden; width: 100%; }
 .ghost.file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .text-btn { border: 0; background: transparent; color: var(--muted); padding: 8px 0; }
 .text-btn.danger, .danger { color: var(--cinnabar); }
