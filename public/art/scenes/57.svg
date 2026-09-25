@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" width="800" height="1000">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f3efe4"/>
+      <stop offset="1" stop-color="#e4ebe4"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="1000" fill="url(#g)"/>
+  <path d="M0 208.3 Q 80.0 65.9 160.0 204.5 Q 240.0 54.1 320.0 198.1 Q 400.0 87.8 480.0 191.9 Q 560.0 59.0 640.0 186.8 Q 720.0 72.3 800.0 192.5 L800 1100 L0 1100 Z" fill="#d5e3d8" opacity="0.55"/><path d="M0 371.3 Q 80.0 255.7 160.0 341.1 Q 240.0 234.5 320.0 331.2 Q 400.0 239.7 480.0 326.8 Q 560.0 192.9 640.0 344.1 Q 720.0 186.4 800.0 333.2 L800 1100 L0 1100 Z" fill="#b7cbb8" opacity="0.65"/><path d="M0 567.4 Q 80.0 427.7 160.0 529.3 Q 240.0 412.3 320.0 537.4 Q 400.0 376.6 480.0 519.8 Q 560.0 387.6 640.0 547.9 Q 720.0 436.7 800.0 525.7 L800 1100 L0 1100 Z" fill="#8eaa93" opacity="0.75"/><path d="M0 752.4 Q 80.0 606.5 160.0 744.5 Q 240.0 582.9 320.0 715.3 Q 400.0 586.3 480.0 744.9 Q 560.0 636.9 640.0 726.9 Q 720.0 588.5 800.0 737.5 L800 1100 L0 1100 Z" fill="#6d8b74" opacity="0.85"/>
+  <ellipse cx="323" cy="766" rx="270" ry="55" fill="#f7f3ea" opacity="0.52"/><ellipse cx="602" cy="629" rx="155" ry="32" fill="#f7f3ea" opacity="0.29"/><ellipse cx="55" cy="589" rx="254" ry="49" fill="#f7f3ea" opacity="0.49"/>
+  <path d="M65.14425134286284 1100 L65.14425134286284 200" stroke="#7d917f" stroke-width="4" opacity="0.45"/>
+      <path d="M65.14425134286284 320 q -36 -20 -60 -8" fill="none" stroke="#8aa48a" stroke-width="2" opacity="0.5"/><path d="M83.14425134286284 1100 L83.14425134286284 240" stroke="#7d917f" stroke-width="7" opacity="0.45"/>
+      <path d="M83.14425134286284 350 q 40 -20 70 -8" fill="none" stroke="#8aa48a" stroke-width="2" opacity="0.5"/><path d="M99.14425134286284 1100 L99.14425134286284 280" stroke="#7d917f" stroke-width="4" opacity="0.45"/>
+      <path d="M99.14425134286284 380 q -36 -20 -60 -8" fill="none" stroke="#8aa48a" stroke-width="2" opacity="0.5"/>
+  
+</svg>

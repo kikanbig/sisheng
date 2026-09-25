@@ -4,6 +4,7 @@ import { useStore } from '../store'
 import { VOICES } from '../lib/voices'
 import type { Mode } from '../types'
 import { SpeedPicker } from './Speed'
+import { sceneFor } from '../lib/scenes'
 
 const MODES: { id: Mode; title: string; hint: string }[] = [
   { id: 'read', title: 'Чтение', hint: 'иероглиф → смысл' },
@@ -53,7 +54,7 @@ export function Today() {
         {MODES.map((item) => {
           const row = store.countsFor(item.id)
           return (
-            <button key={item.id} type="button" data-kind={item.id} className={mode === item.id ? 'mode on' : 'mode'} onClick={() => { setMode(item.id); setEmpty(false) }}>
+            <button key={item.id} type="button" data-kind={item.id} className={mode === item.id ? 'mode on' : 'mode'} style={{ ['--scene' as string]: `url("${sceneFor(item.id)}")` }} onClick={() => { setMode(item.id); setEmpty(false) }}>
               <b>{item.title}</b>
               <small>{item.hint}</small>
               <em>{row.due + row.fresh}</em>
@@ -78,6 +79,7 @@ export function Today() {
               key={voice.id}
               type="button"
               className={store.settings.voice === voice.id ? 'chip on' : 'chip'}
+              style={{ ['--scene' as string]: `url("${sceneFor(voice.id)}")` }}
               onClick={() => store.updateSettings({ voice: voice.id })}
             >
               <b className="hanzi">{voice.han}</b>
@@ -119,6 +121,7 @@ export function Today() {
                     key={list.id}
                     type="button"
                     className={on ? 'chip on' : 'chip'}
+                    style={{ ['--scene' as string]: `url("${sceneFor(list.id)}")` }}
                     onClick={() => {
                       const studyLists = on
                         ? store.settings.studyLists.filter((id) => id !== list.id)

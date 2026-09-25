@@ -8,6 +8,7 @@ import { AiPanel } from './AiPanel'
 import { Contour, Pinyin, syllableTone } from './Pinyin'
 import { SpeedPicker } from './Speed'
 import { StrokeQuiz, Strokes } from './Strokes'
+import { sceneFor } from '../lib/scenes'
 
 const MODE_TITLE = {
   read: 'Чтение',
@@ -288,7 +289,10 @@ export function Session() {
       <article
         key={index}
         className="study-card"
-        style={dx !== 0 && seenIndex === index ? { transform: `translateX(${dx}px) rotate(${dx * 0.03}deg)` } : undefined}
+        style={{
+          ['--scene' as string]: `url("${sceneFor(word.id)}")`,
+          ...(dx !== 0 && seenIndex === index ? { transform: `translateX(${dx}px) rotate(${dx * 0.03}deg)` } : {}),
+        }}
         onClickCapture={(event) => {
           if (!swiped.current) return
           swiped.current = false

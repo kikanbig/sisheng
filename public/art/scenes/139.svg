@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" width="800" height="1000">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f7f2ea"/>
+      <stop offset="1" stop-color="#e7ddd0"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="1000" fill="url(#g)"/>
+  <path d="M0 222.0 Q 80.0 71.3 160.0 211.5 Q 240.0 130.0 320.0 216.6 Q 400.0 134.0 480.0 211.4 Q 560.0 113.0 640.0 201.5 Q 720.0 83.0 800.0 215.0 L800 1100 L0 1100 Z" fill="#d5e3d8" opacity="0.55"/><path d="M0 395.9 Q 80.0 275.7 160.0 375.8 Q 240.0 238.8 320.0 388.8 Q 400.0 217.5 480.0 348.2 Q 560.0 261.9 640.0 370.7 Q 720.0 230.1 800.0 371.0 L800 1100 L0 1100 Z" fill="#b7cbb8" opacity="0.65"/><path d="M0 576.4 Q 80.0 360.1 160.0 563.9 Q 240.0 367.6 320.0 549.6 Q 400.0 404.4 480.0 547.0 Q 560.0 445.5 640.0 540.7 Q 720.0 384.9 800.0 523.7 L800 1100 L0 1100 Z" fill="#8eaa93" opacity="0.75"/><path d="M0 747.5 Q 80.0 576.2 160.0 729.4 Q 240.0 585.2 320.0 732.7 Q 400.0 581.6 480.0 734.3 Q 560.0 613.9 640.0 703.2 Q 720.0 588.9 800.0 747.2 L800 1100 L0 1100 Z" fill="#6d8b74" opacity="0.85"/>
+  <ellipse cx="687" cy="613" rx="175" ry="45" fill="#f7f3ea" opacity="0.43"/><ellipse cx="326" cy="558" rx="252" ry="46" fill="#f7f3ea" opacity="0.31"/><ellipse cx="491" cy="632" rx="278" ry="54" fill="#f7f3ea" opacity="0.36"/>
+  <path d="M285.874552805908 528.5156579315662 l70 -28 l70 28 v8 h-140 z" fill="#5e6f64" opacity="0.55"/>
+    <path d="M303.874552805908 536.5156579315662 v46 h104 v-46" fill="#6d7f73" opacity="0.4"/>
+    <path d="M347.874552805908 536.5156579315662 v46" stroke="#4e5e54" stroke-width="3" opacity="0.35"/>
+  
+</svg>

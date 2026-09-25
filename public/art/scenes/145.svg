@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" width="800" height="1000">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f3efe4"/>
+      <stop offset="1" stop-color="#e4ebe4"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="1000" fill="url(#g)"/>
+  <path d="M0 232.3 Q 80.0 105.7 160.0 208.5 Q 240.0 96.2 320.0 195.8 Q 400.0 96.1 480.0 206.9 Q 560.0 120.4 640.0 195.0 Q 720.0 118.2 800.0 220.6 L800 1100 L0 1100 Z" fill="#d5e3d8" opacity="0.55"/><path d="M0 391.8 Q 80.0 240.4 160.0 348.2 Q 240.0 210.0 320.0 344.9 Q 400.0 248.3 480.0 363.5 Q 560.0 238.9 640.0 389.3 Q 720.0 267.8 800.0 363.4 L800 1100 L0 1100 Z" fill="#b7cbb8" opacity="0.65"/><path d="M0 562.6 Q 80.0 430.5 160.0 550.6 Q 240.0 354.7 320.0 518.2 Q 400.0 379.2 480.0 544.7 Q 560.0 351.1 640.0 527.2 Q 720.0 340.7 800.0 553.0 L800 1100 L0 1100 Z" fill="#8eaa93" opacity="0.75"/><path d="M0 743.2 Q 80.0 579.2 160.0 733.0 Q 240.0 598.6 320.0 735.6 Q 400.0 639.0 480.0 703.9 Q 560.0 579.2 640.0 720.2 Q 720.0 594.8 800.0 715.8 L800 1100 L0 1100 Z" fill="#6d8b74" opacity="0.85"/>
+  <ellipse cx="472" cy="548" rx="237" ry="55" fill="#f7f3ea" opacity="0.48"/><ellipse cx="36" cy="762" rx="254" ry="54" fill="#f7f3ea" opacity="0.31"/><ellipse cx="134" cy="570" rx="161" ry="46" fill="#f7f3ea" opacity="0.49"/>
+  <path d="M102.34989611431956 1100 L102.34989611431956 200" stroke="#7d917f" stroke-width="4" opacity="0.45"/>
+      <path d="M102.34989611431956 320 q -36 -20 -60 -8" fill="none" stroke="#8aa48a" stroke-width="2" opacity="0.5"/><path d="M120.34989611431956 1100 L120.34989611431956 240" stroke="#7d917f" stroke-width="7" opacity="0.45"/>
+      <path d="M120.34989611431956 350 q 40 -20 70 -8" fill="none" stroke="#8aa48a" stroke-width="2" opacity="0.5"/><path d="M136.34989611431956 1100 L136.34989611431956 280" stroke="#7d917f" stroke-width="4" opacity="0.45"/>
+      <path d="M136.34989611431956 380 q -36 -20 -60 -8" fill="none" stroke="#8aa48a" stroke-width="2" opacity="0.5"/>
+  <path d="M466.26615228131413 201.79227652028203 q 18 -16 36 0 q 16 -18 34 2" fill="none" stroke="#5c6b62" stroke-width="2.4" stroke-linecap="round" opacity="0.7"/>
+</svg>
