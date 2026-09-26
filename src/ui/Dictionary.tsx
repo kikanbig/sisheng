@@ -58,7 +58,9 @@ export function Dictionary() {
           return
         }
         const version = await latestDict()
-        if (alive && version && version > next.installed) setFresh(version)
+        if (!alive || !version || version <= next.installed) return
+        setFresh(version)
+        if (navigator.onLine) void install()
       })
       .catch((reason) => alive && setError(reason instanceof Error ? reason.message : 'Словарь не открылся.'))
     return () => {
@@ -148,7 +150,7 @@ export function Dictionary() {
           </p>
           {fresh &&
             (progress !== null ? (
-              <p className="fine">Обновляю · {Math.round(progress * 100)}%</p>
+              <p className="fine">Обновляю базу · {Math.round(progress * 100)}%</p>
             ) : (
               <button type="button" className="text-btn" onClick={() => void install()}>
                 Есть свежая база от {formatVersion(fresh)} · обновить

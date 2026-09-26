@@ -1,8 +1,12 @@
 // Собирает public/dict из свежей выгрузки 大БКРС (bkrs.info, свободная лицензия)
-// и частотного словаря jieba (MIT). Запуск: node scripts/build-dict.mjs [путь к dabkrs] [путь к jieba dict.txt]
+// и частотного словаря jieba (MIT); редкие и вариантные иероглифы отсекаются по «Таблице общеупотребительных
+// стандартных иероглифов» 2013 года (поле kTGH в Unicode Unihan).
+// Запуск: node scripts/build-dict.mjs [dabkrs] [jieba dict.txt] [Unihan_OtherMappings.txt]
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import zlib from 'node:zlib'
+import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -26,6 +30,13 @@ async function bkrsText(file) {
 async function jiebaText(file) {
   if (file) return fs.readFileSync(file, 'utf8')
   return (await download('https://raw.githubusercontent.com/fxsjy/jieba/master/jieba/dict.txt')).toString('utf8')
+}
+
+async function unihanText(file) {
+  if (file) return fs.readFileSync(file, 'utf8')
+  const zip = path.join(os.tmpdir(), 'sisheng-unihan.zip')
+  fs.writeFileSync(zip, await download('https://www.unicode.org/Public/UCD/latest/ucd/Unihan.zip'))
+  return execFileSync('unzip', ['-p', zip, 'Unihan_OtherMappings.txt'], { maxBuffer: 1 << 28 }).toString('utf8')
 }
 
 const INITIALS = ['zh', 'ch', 'sh', 'b', 'p', 'm', 'f', 'd', 't', 'n', 'l', 'g', 'k', 'h', 'j', 'q', 'x', 'r', 'z', 'c', 's', 'y', 'w', '']
@@ -119,7 +130,23 @@ function cleanBody(lines) {
     .replace(/\\\[/g, '⟦')
     .replace(/\\\]/g, '⟧')
     .replace(/\t/g, ' ')
-    .trim()
+    .split(/(\[m\d\][\s\S]*?\[\/m\])/)
+    .map((part) => (part.startsWith('[m') ? part : part.trim() && `[m1]${part.trim()}[/m]`))
+    .filter((part) => part && !/^\[m\d\]\s*-{3,}\s*\[\/m\]$/.test(part))
+    .map(splitExamples)
+    .join('')
+}
+
+// «[m1]птенец[ex]喂雏鸟 …[/ex][/m]» → перевод отдельной строкой, пример — вложенной.
+function splitExamples(part) {
+  const match = part.match(/^\[m(\d)\]([\s\S]*?)\[\/m\]$/)
+  if (!match) return part
+  const [, level, content] = match
+  const at = content.indexOf('[ex]')
+  if (at <= 0 || !content.slice(0, at).trim()) return part
+  const examples = content.slice(at).match(/\[ex\][\s\S]*?\[\/ex\]/g) || []
+  const deeper = Math.min(Number(level) + 1, 9)
+  return `[m${level}]${content.slice(0, at).trim()}[/m]${examples.map((example) => `[m${deeper}]${example}[/m]`).join('')}`
 }
 
 const freq = new Map()
@@ -128,7 +155,15 @@ for (const line of (await jiebaText(process.argv[3])).split('\n')) {
   if (word) freq.set(word, Number(count) || 0)
 }
 
+// Номер в таблице: 1–3500 основные, 3501–6500 второй уровень, дальше фамилии, топонимы и термины.
+const standard = new Map()
+for (const line of (await unihanText(process.argv[4])).split('\n')) {
+  const match = line.match(/^U\+([0-9A-F]+)\tkTGH\t2013:(\d+)/)
+  if (match) standard.set(String.fromCodePoint(parseInt(match[1], 16)), Number(match[2]))
+}
+
 const entries = []
+const skipped = { variant: 0, rareChar: 0 }
 for (const block of (await bkrsText(process.argv[2])).split(/\n\s*\n/)) {
   const lines = block.split('\n')
   const hanzi = lines[0]?.replace(/^\uFEFF/, '').trim()
@@ -136,30 +171,46 @@ for (const block of (await bkrsText(process.argv[2])).split(/\n\s*\n/)) {
   const count = [...hanzi].length
   const f = freq.get(hanzi) || 0
   if (count > 1 && !f) continue
+  const variant = [...hanzi].some((char) => !standard.has(char))
+  const rareChar = count === 1 && standard.get(hanzi) > 6500
   const rest = lines.slice(1).map((line) => line.trim()).filter(Boolean)
   const pinyinLine = rest[0] && !rest[0].startsWith('[') ? rest.shift() : ''
   const readings = readingsOf(pinyinLine || '')
   if (!readings.length) continue
-  const body = cleanBody(rest)
-  if (!body) continue
-  entries.push({ hanzi, readings, f, body })
   if (count === 1) {
     const set = charReadings.get(hanzi) || new Set()
     for (const reading of readings) set.add(bareOf(reading.toLowerCase().replace(/\s+/g, '')))
     charReadings.set(hanzi, set)
   }
+  if (variant || rareChar) {
+    skipped[variant ? 'variant' : 'rareChar'] += 1
+    continue
+  }
+  const body = cleanBody(rest)
+  if (body) entries.push({ hanzi, readings, f, body })
 }
+console.log(`Отсеяно: вариантных и нестандартных ${skipped.variant}, редких одиночных ${skipped.rareChar}`)
 
 const plain = (text) => text.replace(/\[\/?(?:i|p|b|ex|ref)\]/g, '').replace(/⟦/g, '[').replace(/⟧/g, ']').replace(/\s+/g, ' ').trim()
 const ruNorm = (text) => text.toLowerCase().replace(/ё/g, 'е')
 const lines = (body) => [...body.matchAll(/\[m\d\]([\s\S]*?)\[\/m\]/g)].map((match) => match[1]).filter((line) => !line.includes('[ex]'))
 
+// Сначала ищем строку с настоящим переводом, потом — с пояснением курсивом (们), в крайнем случае берём ссылку «см. 杩头».
+const SHORT_PASSES = [
+  (line) => /\p{Script=Cyrillic}{2}/u.test(line.replace(/\[(i|p|b|ref)\][\s\S]*?\[\/\1\]/g, ' ').replace(/\p{Script=Cyrillic}+\.(?!\.)/gu, ' ')),
+  (line) => /\p{Script=Cyrillic}{3}/u.test(line.replace(/\[(p|b)\][\s\S]*?\[\/\1\]/g, ' ')),
+  (line) => /\[ref\]|\p{Script=Han}/u.test(line),
+]
+
 function shortOf(body) {
-  for (const line of lines(body)) {
-    const core = line.replace(/\[(i|p|b|ref)\][\s\S]*?\[\/\1\]/g, ' ')
-    if ((core.match(/\p{Script=Cyrillic}/gu) || []).length < 3) continue
-    const text = plain(line.replace(/\[(b|p)\][\s\S]*?\[\/\1\]/g, ' ')).replace(/^\s*(?:\d+\)|[а-я]\)|[IVX]+)\s*/i, '').trim()
-    if (text) return text.length > 110 ? `${text.slice(0, 108).replace(/[\s,;]+\S*$/, '')}…` : text
+  for (const [pass, fits] of SHORT_PASSES.entries()) {
+    for (const line of lines(body)) {
+      if (!fits(line)) continue
+      const text = plain(pass === 2 ? line.replace(/\[b\][\s\S]*?\[\/b\]/g, ' ') : line.replace(/\[(b|p)\][\s\S]*?\[\/\1\]/g, ' '))
+        .replace(/^\s*(?:\d+\)|[а-я]\)|[IVX]+)\s*/i, '')
+        .trim()
+      if (text) return text.length > 110 ? `${text.slice(0, 108).replace(/[\s,;]+\S*$/, '')}…` : text
+    }
   }
   return ''
 }
@@ -214,7 +265,7 @@ const ru = [...tokens.keys()].sort().map((token) => {
   return `${token}\t${packed.join(',')}`
 })
 
-const version = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+const version = new Date().toISOString().slice(0, 16).replace(/\D/g, '')
 fs.rmSync(outDir, { recursive: true, force: true })
 fs.mkdirSync(outDir, { recursive: true })
 const write = (name, text) => {
