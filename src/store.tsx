@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { builtinWords } from './data/catalog'
 import {
+  deleteCard,
   deleteList,
   deleteWord,
   exportBackup,
@@ -26,6 +27,17 @@ type Session = {
   again: number
   good: number
   drill?: boolean
+  title?: string
+  startedAt: number
+  missed: string[]
+  history: Snapshot[]
+}
+
+type Snapshot = {
+  session: Omit<Session, 'history'>
+  card: { id: string; prev: SrsCard | null } | null
+  stats: Stats
+  newSeen: Record<string, number>
 }
 
 type Store = {
@@ -44,7 +56,10 @@ type Store = {
   countsFor: (mode: Mode) => { due: number; fresh: number }
   startSession: (mode: Mode, ahead?: number) => boolean
   startDrill: (listId: string) => boolean
+  startWords: (words: Word[], title: string) => boolean
   endSession: () => void
+  checkpoint: (word: Word | null, mode: Mode) => void
+  undo: () => void
   grade: (word: Word, mode: Mode, grade: Grade) => void
   pushAgain: (item: QueueItem) => void
   skipAhead: (wordId: string) => void
@@ -98,7 +113,7 @@ function applyTheme(theme: Settings['theme']) {
   document.documentElement.dataset.theme = theme
   document.documentElement.classList.toggle('dark', theme === 'night')
   const meta = document.querySelector('meta[name="theme-color"]')
-  if (meta) meta.setAttribute('content', theme === 'night' ? '#191918' : '#f8f7f4')
+  if (meta) meta.setAttribute('content', theme === 'night' ? '#070913' : '#f8f7f4')
 }
 
 function coerceSpeed(value: string | undefined): Speed {
@@ -168,14 +183,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ahead,
     })
     if (!queue.items.length) return false
-    setSession({ items: queue.items, index: 0, mode, again: 0, good: 0 })
+    setSession({ items: queue.items, index: 0, mode, again: 0, good: 0, startedAt: Date.now(), missed: [], history: [] })
     return true
   }
 
-  const startDrill = (listId: string) => {
-    const items = ordered
-      .filter((word) => word.listId === listId && word.kind !== 'tone')
-      .map((word) => ({ word, teach: false }))
+  const startWords = (pick: Word[], title: string) => {
+    const items = pick.filter((word) => word.kind !== 'tone').map((word) => ({ word, teach: false }))
     for (let i = items.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1))
       const swap = items[i]
@@ -183,8 +196,38 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       items[j] = swap
     }
     if (!items.length) return false
-    setSession({ items, index: 0, mode: 'read', again: 0, good: 0, drill: true })
+    setSession({ items, index: 0, mode: 'read', again: 0, good: 0, drill: true, title, startedAt: Date.now(), missed: [], history: [] })
     return true
+  }
+
+  const startDrill = (listId: string) => startWords(ordered.filter((word) => word.listId === listId), 'Все слова')
+
+  const checkpoint: Store['checkpoint'] = (word, mode) => {
+    if (!session) return
+    const { history, ...rest } = session
+    const id = word ? cardId(word.id, mode) : null
+    const snap: Snapshot = {
+      session: rest,
+      card: id ? { id, prev: cardMap.get(id) ?? null } : null,
+      stats,
+      newSeen,
+    }
+    setSession((current) => (current ? { ...current, history: [...history.slice(-19), snap] } : current))
+  }
+
+  const undo = () => {
+    const snap = session?.history.at(-1)
+    if (!session || !snap) return
+    setSession({ ...snap.session, history: session.history.slice(0, -1) })
+    if (snap.card) {
+      const { id, prev } = snap.card
+      setCards((current) => (prev ? [...current.filter((card) => card.id !== id), prev] : current.filter((card) => card.id !== id)))
+      void (prev ? saveCard(prev) : deleteCard(id))
+    }
+    setStats(snap.stats)
+    void saveStats(snap.stats)
+    setNewSeen(snap.newSeen)
+    void saveNewSeen(snap.newSeen)
   }
 
   const rememberStudy = (wasNew: boolean, mode: Mode) => {
@@ -224,6 +267,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             ...current,
             again: current.again + (value === 'again' ? 1 : 0),
             good: current.good + (value === 'again' ? 0 : 1),
+            missed: value === 'again' && !current.missed.includes(word.id) ? [...current.missed, word.id] : current.missed,
           }
         : current,
     )
@@ -240,6 +284,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       mixVoices: false,
       speed: 'steady',
       newPerDay: 8,
+      dailyGoal: 30,
       theme: 'paper',
       studyLists: ['lesson1', 'hsk1'],
       onboardingDone: true,
@@ -253,7 +298,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     countsFor,
     startSession,
     startDrill,
+    startWords,
     endSession: () => setSession(null),
+    checkpoint,
+    undo,
     grade,
     pushAgain: (item) => {
       setSession((current) => {

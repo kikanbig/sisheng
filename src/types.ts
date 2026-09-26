@@ -47,6 +47,7 @@ export type Settings = {
   mixVoices: boolean
   speed: Speed
   newPerDay: number
+  dailyGoal: number
   theme: Theme
   studyLists: string[]
   onboardingDone: boolean

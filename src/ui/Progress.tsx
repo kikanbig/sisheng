@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react'
+import { speak } from '../lib/audio'
 import { dayWord, todayKey } from '../lib/srs'
 import { useStore } from '../store'
-import type { BackupFile, Mode } from '../types'
+import type { BackupFile, Mode, Word } from '../types'
+import { Pinyin } from './Pinyin'
 
 const MODES: Mode[] = ['read', 'listen', 'recall', 'write', 'tones']
 const MODE_NAME: Record<Mode, string> = {
@@ -34,6 +36,20 @@ export function Progress() {
     }
     return byMode
   }, [store.cards])
+
+  const hard = useMemo(() => {
+    const score = new Map<string, number>()
+    for (const card of store.cards) {
+      const weight = (card.lapses || 0) * 2 + Math.max(0, 2.5 - (card.ease || 2.5)) * 5
+      if (weight > 0.5) score.set(card.wordId, (score.get(card.wordId) || 0) + weight)
+    }
+    const byId = new Map(store.words.map((word) => [word.id, word]))
+    return [...score.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([id]) => byId.get(id))
+      .filter((word): word is Word => Boolean(word) && word!.kind !== 'tone')
+      .slice(0, 24)
+  }, [store.cards, store.words])
 
   const days = Array.from({ length: 14 }, (_, index) => {
     const date = new Date()
@@ -84,6 +100,31 @@ export function Progress() {
             </li>
           ))}
         </ul>
+      </div>
+
+      <div className="block" data-art="ink">
+        <div className="block-head">
+          <h2>Трудные слова</h2>
+          <p>{hard.length ? 'Чаще других возвращались на повтор. Нажми — услышишь.' : 'Пока пусто: ошибок почти не было.'}</p>
+        </div>
+        {hard.length > 0 && (
+          <>
+            <ul className="missed">
+              {hard.map((word) => (
+                <li key={word.id}>
+                  <button type="button" onClick={() => void speak(word.hanzi, store.settings.voice, store.settings.speed, 'vocab')}>
+                    <b className="hanzi">{word.hanzi}</b>
+                    <Pinyin text={word.pinyin} />
+                    <span>{word.ru}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <button type="button" className="primary" onClick={() => store.startWords(hard, 'Трудные')}>
+              Прогнать трудные · {hard.length}
+            </button>
+          </>
+        )}
       </div>
 
       <div className="row-toggles">

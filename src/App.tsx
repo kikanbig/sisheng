@@ -45,18 +45,19 @@ export function App() {
         </div>
         <button
           type="button"
-          className="text-btn"
+          className="theme-btn"
           onClick={() => store.updateSettings({ theme: store.settings.theme === 'night' ? 'paper' : 'night' })}
         >
-          {store.settings.theme === 'night' ? 'Бумага' : 'Ночь'}
+          {store.settings.theme === 'night' ? <SunIcon /> : <MoonIcon />}
+          {store.settings.theme === 'night' ? 'Бумага' : 'Космос'}
         </button>
       </header>
-      <main>
+      <main key={store.tab}>
         {store.tab === 'today' && <Today />}
         {store.tab === 'lists' && <Lists />}
         {store.tab === 'progress' && <Progress />}
       </main>
-      <nav className="tabs">
+      <nav className="tabs" style={{ ['--i' as string]: TABS.findIndex((tab) => tab.id === store.tab) }}>
         {TABS.map((tab) => (
           <button key={tab.id} type="button" className={store.tab === tab.id ? 'tab on' : 'tab'} onClick={() => store.setTab(tab.id)}>
             {tab.label}
@@ -64,5 +65,29 @@ export function App() {
         ))}
       </nav>
     </div>
+  )
+}
+
+function MoonIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="currentColor" />
+      <circle cx="18" cy="5" r="1" fill="currentColor" />
+      <circle cx="21" cy="9" r="0.7" fill="currentColor" />
+    </svg>
+  )
+}
+
+function SunIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="4.2" fill="currentColor" />
+      <path
+        d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
   )
 }

@@ -6,7 +6,13 @@ function paintColor(variable: string, fallback: string) {
   document.body.appendChild(probe)
   const color = getComputedStyle(probe).color
   probe.remove()
-  return color.startsWith('rgb') ? color : fallback
+  if (color.startsWith('rgb')) return color
+  const context = document.createElement('canvas').getContext('2d', { willReadFrequently: true })
+  if (!context) return fallback
+  context.fillStyle = color
+  context.fillRect(0, 0, 1, 1)
+  const [r, g, b, a] = context.getImageData(0, 0, 1, 1).data
+  return a ? `rgba(${r},${g},${b},${(a / 255).toFixed(2)})` : fallback
 }
 
 type StrokeWriter = {

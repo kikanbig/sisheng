@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
-import { wordsLabel } from '../lib/srs'
+import { dayWord, todayKey, wordsLabel } from '../lib/srs'
 import { useStore } from '../store'
 import { VOICES } from '../lib/voices'
 import type { Mode } from '../types'
+import { Ring } from './Ring'
 import { SpeedPicker } from './Speed'
+
+const WEEKDAYS = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб']
 
 const MODES: { id: Mode; title: string; hint: string }[] = [
   { id: 'read', title: 'Чтение', hint: 'иероглиф → смысл' },
@@ -22,6 +25,19 @@ export function Today() {
   const ready = counts.due + counts.fresh
   const hour = new Date().getHours()
   const hello = hour < 5 ? 'Поздний час' : hour < 12 ? 'Доброе утро' : hour < 18 ? 'Добрый день' : 'Добрый вечер'
+  const goal = store.settings.dailyGoal
+  const answered = store.stats.days[todayKey()] || 0
+  const week = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date()
+    date.setDate(date.getDate() - (6 - index))
+    const key = todayKey(date)
+    const n = store.stats.days[key] || 0
+    return {
+      key,
+      label: WEEKDAYS[date.getDay()],
+      state: n >= goal ? 'full' : n > 0 ? 'some' : index === 6 ? 'today' : 'none',
+    }
+  })
 
   useEffect(() => {
     const onPrompt = (event: Event) => {
@@ -39,16 +55,37 @@ export function Today() {
 
   return (
     <section className="screen">
-      <p className="eyebrow">{hello}</p>
-      <h1>
-        {ready === 0
-          ? 'На сегодня очередь пуста'
-          : counts.due > 0 && counts.fresh > 0
-            ? `${counts.due} к повторению и ${counts.fresh} новых`
-            : counts.due > 0
-              ? `${counts.due} к повторению`
-              : `${counts.fresh} новых слов`}
-      </h1>
+      <div className="hero">
+        <div className="hero-text">
+          <p className="eyebrow">{hello}</p>
+          <h1>
+            {ready === 0
+              ? 'На сегодня очередь пуста'
+              : counts.due > 0 && counts.fresh > 0
+                ? `${counts.due} к повторению и ${counts.fresh} новых`
+                : counts.due > 0
+                  ? `${counts.due} к повторению`
+                  : `${counts.fresh} новых слов`}
+          </h1>
+        </div>
+        <Ring
+          className="goal"
+          value={answered / goal}
+          label={String(answered)}
+          caption={answered >= goal ? 'цель взята' : `из ${goal}`}
+        />
+      </div>
+      <div className="week" aria-label="Последние семь дней">
+        {week.map((day) => (
+          <span key={day.key} className="day" data-state={day.state}>
+            <i />
+            <small>{day.label}</small>
+          </span>
+        ))}
+        <b className="streak">
+          {store.stats.streak > 0 ? `${store.stats.streak} ${dayWord(store.stats.streak)} подряд` : 'серия начнётся сегодня'}
+        </b>
+      </div>
       <div className="mode-grid">
         {MODES.map((item) => {
           const row = store.countsFor(item.id)
@@ -99,6 +136,15 @@ export function Today() {
             </button>
             <b>{store.settings.newPerDay} новых</b>
             <button type="button" onClick={() => store.updateSettings({ newPerDay: Math.min(20, store.settings.newPerDay + 2) })}>
+              +
+            </button>
+          </span>
+          <span className="stepper">
+            <button type="button" aria-label="Меньше ответов в день" onClick={() => store.updateSettings({ dailyGoal: Math.max(10, goal - 10) })}>
+              −
+            </button>
+            <b>цель {goal}</b>
+            <button type="button" aria-label="Больше ответов в день" onClick={() => store.updateSettings({ dailyGoal: Math.min(300, goal + 10) })}>
               +
             </button>
           </span>

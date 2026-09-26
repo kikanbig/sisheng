@@ -17,6 +17,7 @@ export const defaultSettings = (): Settings => ({
   mixVoices: false,
   speed: 'steady',
   newPerDay: 8,
+  dailyGoal: 30,
   theme: 'paper',
   studyLists: ['lesson1', 'hsk1'],
   onboardingDone: false,
@@ -107,6 +108,11 @@ export async function saveNewSeen(map: Record<string, number>) {
 export async function saveCard(card: SrsCard) {
   const db = await getDb()
   await db.put('srs', card)
+}
+
+export async function deleteCard(id: string) {
+  const db = await getDb()
+  await db.delete('srs', id)
 }
 
 export async function saveWord(word: Word) {

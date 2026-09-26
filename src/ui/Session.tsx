@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import { pickVoice, prefetch, speak, stopSpeech, unlockAudio } from '../lib/audio'
 import { VOICES, voiceById } from '../lib/voices'
 import { pickScene } from '../lib/scenes'
-import { dayWord } from '../lib/srs'
+import { dayWord, todayKey } from '../lib/srs'
 import type { Grade } from '../types'
 import { useStore } from '../store'
 import { AiPanel } from './AiPanel'
 import { Phrase } from './Phrase'
+import { Ring } from './Ring'
 import { Contour, Pinyin, syllableTone } from './Pinyin'
 import { SpeedPicker } from './Speed'
 import { StrokeQuiz, Strokes } from './Strokes'
@@ -29,6 +30,8 @@ export function Session() {
   const [attempt, setAttempt] = useState(0)
   const [heardId, setHeardId] = useState<string | null>(null)
   const [scene, setScene] = useState(() => pickScene(null))
+  const [undoable, setUndoable] = useState(false)
+  const undoTimer = useRef(0)
   const drag = useRef<{ x: number; y: number; id: number; active: boolean; example: boolean } | null>(null)
   const dxRef = useRef(0)
   const swiped = useRef(false)
@@ -84,7 +87,13 @@ export function Session() {
     }
   }, [item?.word.id, item?.teach, session?.index, session?.mode, attempt])
 
-  useEffect(() => () => stopSpeech(), [])
+  useEffect(
+    () => () => {
+      stopSpeech()
+      window.clearTimeout(undoTimer.current)
+    },
+    [],
+  )
 
   const keys = useRef<(event: KeyboardEvent) => void>(() => {})
 
@@ -104,25 +113,28 @@ export function Session() {
     return voices.current.get(key) || store.settings.voice
   }
 
+  function undo() {
+    window.clearTimeout(undoTimer.current)
+    setUndoable(false)
+    stopSpeech()
+    voiced.current = -1
+    store.undo()
+  }
+
+  function offerUndo() {
+    setUndoable(true)
+    window.clearTimeout(undoTimer.current)
+    undoTimer.current = window.setTimeout(() => setUndoable(false), 5000)
+  }
+
   keys.current = (event) => {
     if (event.key === 'Escape') store.endSession()
+    if ((event.metaKey || event.ctrlKey) && event.key === 'z') undo()
   }
 
   if (!session) return null
   if (!item) {
-    return (
-      <section className="screen done">
-        <p className="eyebrow">занятие</p>
-        <h1>На сегодня хватит.</h1>
-        <p className="lead">
-          Удержано {session.good}. Сразу вернулось {session.again}.
-          {store.stats.streak > 0 ? ` Серия ${store.stats.streak} ${dayWord(store.stats.streak)}.` : ''}
-        </p>
-        <button type="button" className="primary" onClick={store.endSession}>
-          К сегодняшнему
-        </button>
-      </section>
-    )
+    return <Finish onUndo={session.history.length ? undo : undefined} />
   }
 
   const word = item.word
@@ -177,22 +189,28 @@ export function Session() {
   }
 
   function commit(value: Grade) {
+    store.checkpoint(word, round.mode)
     voiceNext()
     store.grade(word, round.mode, value)
     if (value === 'again') store.pushAgain(cardItem)
     store.advance()
+    offerUndo()
   }
 
   function learnLater() {
+    store.checkpoint(null, round.mode)
     voiceNext()
     store.advance()
+    offerUndo()
   }
 
   function alreadyKnow() {
+    store.checkpoint(word, round.mode)
     voiceNext(word.id)
     store.grade(word, round.mode, 'good')
     store.skipAhead(word.id)
     store.advance()
+    offerUndo()
   }
 
   function pickTone(index: number) {
@@ -213,6 +231,7 @@ export function Session() {
     drag.current = null
     dxRef.current = 0
     setDx(0)
+    if (Math.abs(moved) > 88) navigator.vibrate?.(8)
     if (moved > 88) {
       swiped.current = true
       if (cardItem.teach) alreadyKnow()
@@ -264,6 +283,11 @@ export function Session() {
   }
 
   keys.current = (event) => {
+    if ((event.metaKey || event.ctrlKey) && event.key === 'z') {
+      event.preventDefault()
+      undo()
+      return
+    }
     if (event.metaKey || event.ctrlKey || event.altKey) return
     if (event.key === 'Escape') store.endSession()
     if (cardItem.teach && (event.key === ' ' || event.key === 'Enter')) {
@@ -294,7 +318,7 @@ export function Session() {
   function onSessionClick(event: React.MouseEvent) {
     if (swiped.current || revealed || cardItem.teach || round.mode === 'tones' || round.mode === 'write') return
     const target = event.target as HTMLElement
-    if (target.closest('.session-bar, .speed-row')) return
+    if (target.closest('.session-bar, .speed-row, .undo-toast')) return
     show()
   }
 
@@ -319,13 +343,16 @@ export function Session() {
           Закрыть
         </button>
         <p>
-          {session.drill ? 'Все слова' : MODE_TITLE[session.mode]} · {session.index + 1}/{session.items.length}
+          {session.title ?? (session.drill ? 'Все слова' : MODE_TITLE[session.mode])} · {session.index + 1}/{session.items.length}
           {item.teach ? ' · знакомство' : ''}
         </p>
         <span className="voice-tag">
           {voice.han} {voice.name}
         </span>
       </header>
+      <div className="session-progress" aria-hidden="true">
+        <i style={{ width: `${(session.index / session.items.length) * 100}%` }} />
+      </div>
       <SpeedPicker value={store.settings.speed} onChange={(speed) => store.updateSettings({ speed })} />
 
       <article
@@ -415,6 +442,13 @@ export function Session() {
         </button>
         {hint && <p className="fine">{hint}</p>}
       </article>
+
+      {undoable && session.history.length > 0 && (
+        <button type="button" className="undo-toast" onClick={undo}>
+          <UndoIcon />
+          Вернуть прошлую карточку
+        </button>
+      )}
 
       <footer className="session-foot">
         {item.teach ? (
@@ -562,6 +596,92 @@ function Answer({
       <Strokes hanzi={word.hanzi} />
       <AiPanel key={`${word.hanzi}|${word.pinyin}`} word={{ ...word, id: word.hanzi, listId: '', kind: 'vocab' }} />
     </div>
+  )
+}
+
+function Finish({ onUndo }: { onUndo?: () => void }) {
+  const store = useStore()
+  const session = store.session!
+  const total = session.good + session.again
+  const accuracy = total ? Math.round((session.good / total) * 100) : 100
+  const minutes = Math.max(1, Math.round((Date.now() - session.startedAt) / 60000))
+  const byId = new Map(session.items.map((row) => [row.word.id, row.word]))
+  const missed = session.missed.map((id) => byId.get(id)).filter((word): word is NonNullable<typeof word> => Boolean(word))
+  const today = store.stats.days[todayKey()] || 0
+  const goal = store.settings.dailyGoal
+
+  return (
+    <section className="screen done">
+      <p className="eyebrow">занятие завершено</p>
+      <h1>{accuracy >= 85 ? 'Чисто прошёл.' : accuracy >= 60 ? 'Хорошая работа.' : 'Трудный круг — это нормально.'}</h1>
+      <div className="finish-hero">
+        <Ring value={accuracy / 100} label={`${accuracy}%`} caption="точность" />
+        <ul className="finish-stats">
+          <li>
+            <b>{session.good}</b>
+            <span>удержано</span>
+          </li>
+          <li>
+            <b>{session.again}</b>
+            <span>вернулось</span>
+          </li>
+          <li>
+            <b>{minutes} мин</b>
+            <span>на занятие</span>
+          </li>
+          <li>
+            <b>
+              {today}/{goal}
+            </b>
+            <span>{today >= goal ? 'цель дня взята' : 'к цели дня'}</span>
+          </li>
+        </ul>
+      </div>
+      {store.stats.streak > 0 && (
+        <p className="lead">
+          Серия {store.stats.streak} {dayWord(store.stats.streak)}. Завтра интервалы сами подскажут, что повторить.
+        </p>
+      )}
+      {missed.length > 0 && (
+        <div className="block">
+          <div className="block-head">
+            <h2>Вернулись в этот раз</h2>
+            <p>Нажми, чтобы услышать ещё раз.</p>
+          </div>
+          <ul className="missed">
+            {missed.map((word) => (
+              <li key={word.id}>
+                <button type="button" onClick={() => void speak(word.hanzi, store.settings.voice, store.settings.speed, 'vocab')}>
+                  <b className="hanzi">{word.hanzi}</b>
+                  <Pinyin text={word.pinyin} />
+                  <span>{word.ru}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <button type="button" className="ghost" onClick={() => store.startWords(missed, 'Вернувшиеся')}>
+            Прогнать их ещё раз
+          </button>
+        </div>
+      )}
+      <button type="button" className="primary xl" onClick={store.endSession}>
+        К сегодняшнему
+      </button>
+      {onUndo && (
+        <button type="button" className="text-btn" onClick={onUndo}>
+          Вернуть последнюю карточку
+        </button>
+      )}
+    </section>
+  )
+}
+
+function UndoIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M9 7 4 12l5 5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4.5 12H14a6 6 0 0 1 0 12h-2" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" transform="translate(0 -6)" />
+    </svg>
   )
 }
 
