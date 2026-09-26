@@ -4,8 +4,6 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { EdgeTTS } from 'edge-tts-universal'
-import { dictReady, loadDict, lookupDict, searchDict } from './dict.js'
-
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const root = path.resolve(__dirname, '..')
 const dist = path.join(root, 'dist')
@@ -254,33 +252,6 @@ app.post('/api/tts', async (req, res) => {
   }
 })
 
-app.get('/api/dict', (req, res) => {
-  if (limited(req, 'dict', 3000, 60 * 60 * 1000)) {
-    res.status(429).json({ error: 'Слишком много запросов к словарю. Подожди немного.' })
-    return
-  }
-  if (!dictReady()) {
-    res.status(503).json({ error: 'Словарь ещё загружается, попробуй через пару секунд.' })
-    return
-  }
-  res.setHeader('cache-control', 'public, max-age=3600')
-  res.json({ results: searchDict(String(req.query.q || '')) })
-})
-
-app.get('/api/dict/word', (req, res) => {
-  if (limited(req, 'dict', 3000, 60 * 60 * 1000)) {
-    res.status(429).json({ error: 'Слишком много запросов к словарю. Подожди немного.' })
-    return
-  }
-  if (!dictReady()) {
-    res.status(503).json({ error: 'Словарь ещё загружается, попробуй через пару секунд.' })
-    return
-  }
-  const hanzi = String(req.query.h || '').trim().slice(0, 16)
-  res.setHeader('cache-control', 'public, max-age=3600')
-  res.json({ entries: hanzi ? lookupDict(hanzi) : [] })
-})
-
 const glossCache = new Map()
 const sensesCache = new Map()
 
@@ -467,7 +438,4 @@ if (fs.existsSync(dist)) {
 
 app.listen(port, '0.0.0.0', () => {
   console.log(`sisheng listening on ${port}`)
-  setImmediate(() => {
-    if (!loadDict(path.join(__dirname, 'data', 'bkrs.tsv.gz'))) console.error('dict: нет server/data/bkrs.tsv.gz')
-  })
 })

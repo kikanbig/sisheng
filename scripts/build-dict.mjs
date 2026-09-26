@@ -1,4 +1,4 @@
-// Собирает server/data/bkrs.tsv.gz из свежей выгрузки 大БКРС (bkrs.info, свободная лицензия)
+// Собирает public/dict из свежей выгрузки 大БКРС (bkrs.info, свободная лицензия)
 // и частотного словаря jieba (MIT). Запуск: node scripts/build-dict.mjs [путь к dabkrs] [путь к jieba dict.txt]
 import fs from 'node:fs'
 import path from 'node:path'
@@ -6,7 +6,7 @@ import zlib from 'node:zlib'
 import { fileURLToPath } from 'node:url'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const out = path.join(root, 'server', 'data', 'bkrs.tsv.gz')
+const outDir = path.join(root, 'public', 'dict')
 
 async function download(url) {
   const response = await fetch(url, { headers: { 'user-agent': 'Mozilla/5.0 sisheng-dict-builder' } })
@@ -150,13 +150,82 @@ for (const block of (await bkrsText(process.argv[2])).split(/\n\s*\n/)) {
   }
 }
 
+const plain = (text) => text.replace(/\[\/?(?:i|p|b|ex|ref)\]/g, '').replace(/⟦/g, '[').replace(/⟧/g, ']').replace(/\s+/g, ' ').trim()
+const ruNorm = (text) => text.toLowerCase().replace(/ё/g, 'е')
+const lines = (body) => [...body.matchAll(/\[m\d\]([\s\S]*?)\[\/m\]/g)].map((match) => match[1]).filter((line) => !line.includes('[ex]'))
+
+function shortOf(body) {
+  for (const line of lines(body)) {
+    const core = line.replace(/\[(i|p|b|ref)\][\s\S]*?\[\/\1\]/g, ' ')
+    if ((core.match(/\p{Script=Cyrillic}/gu) || []).length < 3) continue
+    const text = plain(line.replace(/\[(b|p)\][\s\S]*?\[\/\1\]/g, ' ')).replace(/^\s*(?:\d+\)|[а-я]\)|[IVX]+)\s*/i, '').trim()
+    if (text) return text.length > 110 ? `${text.slice(0, 108).replace(/[\s,;]+\S*$/, '')}…` : text
+  }
+  return ''
+}
+
+function meanings(body) {
+  return lines(body)
+    .map((line) =>
+      line
+        .replace(/\[(i|p|b|ref)\][\s\S]*?\[\/\1\]/g, ' ')
+        .replace(/⟦|⟧/g, '')
+        .replace(/^\s*(?:\d+\)|[а-я]\))\s*/i, '')
+        .replace(/\s+/g, ' ')
+        .trim(),
+    )
+    .filter((text) => /\p{Script=Cyrillic}/u.test(text))
+    .slice(0, 12)
+}
+
 const rows = []
 for (const { hanzi, readings, f, body } of entries) {
   const spaced = [...new Set(readings.map((reading) => spaceReading(reading, hanzi)).filter(Boolean))]
-  if (spaced.length) rows.push([hanzi, spaced.join(', '), f, body].join('\t'))
+  if (spaced.length) rows.push({ hanzi, pinyin: spaced.join(', '), f, body })
 }
+rows.sort((a, b) => b.f - a.f)
 
-fs.mkdirSync(path.dirname(out), { recursive: true })
-const gz = zlib.gzipSync(rows.join('\n'), { level: 9 })
-fs.writeFileSync(out, gz)
-console.log(`${rows.length} статей → ${path.relative(root, out)} (${(gz.length / 1e6).toFixed(1)} МБ)`)
+// Русский индекс: слово → записи, где оно есть в значениях. Качество 0–7: целый смысл (+4), первое значение (+2) или одно из первых трёх (+1).
+const tokens = new Map()
+rows.forEach((row, id) => {
+  meanings(row.body).forEach((line, index) => {
+    const chunks = ruNorm(line.replace(/\([^)]*\)/g, ' ')).split(/[;,]/).map((chunk) => chunk.replace(/[^\p{L}\s-]/gu, ' ').replace(/\s+/g, ' ').trim())
+    for (const token of new Set(ruNorm(line).match(/\p{Script=Cyrillic}[\p{Script=Cyrillic}-]*/gu) || [])) {
+      if (token.length < 2) continue
+      const quality = (chunks.includes(token) ? 4 : 0) + (index === 0 ? 2 : index < 3 ? 1 : 0)
+      const list = tokens.get(token) || []
+      const last = list[list.length - 1]
+      if (last && last[0] === id) last[1] = Math.max(last[1], quality)
+      else list.push([id, quality])
+      tokens.set(token, list)
+    }
+  })
+})
+
+const index = rows.map((row) => [row.hanzi, row.pinyin, row.f, shortOf(row.body)].join('\t'))
+const ru = [...tokens.keys()].sort().map((token) => {
+  let prev = 0
+  const packed = tokens.get(token).map(([id, quality]) => {
+    const value = id * 8 + quality
+    const delta = value - prev
+    prev = value
+    return delta.toString(36)
+  })
+  return `${token}\t${packed.join(',')}`
+})
+
+const version = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+fs.rmSync(outDir, { recursive: true, force: true })
+fs.mkdirSync(outDir, { recursive: true })
+const write = (name, text) => {
+  const gz = zlib.gzipSync(text, { level: 9 })
+  fs.writeFileSync(path.join(outDir, name), gz)
+  return gz.length
+}
+const files = {
+  index: `index.${version}.txt.gz`,
+  bodies: `bodies.${version}.txt.gz`,
+}
+const bytes = write(files.index, `${index.join('\n')}\n@@\n${ru.join('\n')}`) + write(files.bodies, rows.map((row) => row.body).join('\n'))
+fs.writeFileSync(path.join(outDir, 'manifest.json'), JSON.stringify({ version, count: rows.length, bytes, files }))
+console.log(`${rows.length} статей, ${tokens.size} русских слов → public/dict (${(bytes / 1e6).toFixed(1)} МБ)`)

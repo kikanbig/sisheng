@@ -914,6 +914,9 @@ h2 { font-size: 1.05rem; letter-spacing: -0.03em; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 .dict-intro { display: grid; gap: 12px; }
+.dict-progress { position: relative; height: 44px; border-radius: 14px; overflow: hidden; background: var(--line); display: grid; place-items: center; }
+.dict-progress i { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--gold) 45%, transparent); transition: width 0.3s ease; }
+.dict-progress span { position: relative; font-weight: 600; font-size: 0.9rem; color: var(--ink); }
 .dict-intro > p:first-child { color: var(--muted); }
 .dict-tries { display: flex; flex-wrap: wrap; gap: 8px; }
 .dict-tries .chip { min-width: 0; padding: 8px 14px; font-weight: 600; }

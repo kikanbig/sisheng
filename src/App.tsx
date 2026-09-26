@@ -1,3 +1,5 @@
+import { useEffect } from 'react'
+import { dictStatus } from './lib/dict'
 import { Session } from './ui/Session'
 import { Today } from './ui/Today'
 import { Lists } from './ui/Lists'
@@ -14,6 +16,11 @@ const TABS = [
 
 export function App() {
   const store = useStore()
+
+  useEffect(() => {
+    const timer = setTimeout(() => void dictStatus().catch(() => undefined), 3000)
+    return () => clearTimeout(timer)
+  }, [])
 
   if (store.error) {
     return (

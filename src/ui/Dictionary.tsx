@@ -1,6 +1,19 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { speak, unlockAudio } from '../lib/audio'
-import { cardMeaning, dictLines, loadEntries, pieces, searchDict, splitExample, type DictEntry, type DictHit } from '../lib/dict'
+import {
+  cardMeaning,
+  dictLines,
+  dictStatus,
+  installDict,
+  latestDict,
+  loadEntries,
+  pieces,
+  searchDict,
+  splitExample,
+  type DictEntry,
+  type DictHit,
+  type DictStatus,
+} from '../lib/dict'
 import { useStore } from '../store'
 import { Speaker } from './Lists'
 import { Pinyin } from './Pinyin'
@@ -16,35 +29,64 @@ export function Dictionary() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [open, setOpen] = useState<string | null>(null)
+  const [status, setStatus] = useState<DictStatus | null>(null)
+  const [progress, setProgress] = useState<number | null>(null)
+  const [fresh, setFresh] = useState<string | null>(null)
+  const latest = useRef(0)
+
+  async function install() {
+    setError('')
+    setProgress(0)
+    try {
+      setStatus(await installDict((loaded, total) => setProgress(Math.min(1, loaded / total))))
+      setFresh(null)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Словарь не скачался.')
+    } finally {
+      setProgress(null)
+    }
+  }
+
+  useEffect(() => {
+    let alive = true
+    dictStatus()
+      .then(async (next) => {
+        if (!alive) return
+        setStatus(next)
+        if (!next.installed) {
+          if (navigator.onLine) void install()
+          return
+        }
+        const version = await latestDict()
+        if (alive && version && version > next.installed) setFresh(version)
+      })
+      .catch((reason) => alive && setError(reason instanceof Error ? reason.message : 'Словарь не открылся.'))
+    return () => {
+      alive = false
+    }
+  }, [])
 
   useEffect(() => {
     const q = query.trim()
-    setError('')
-    if (!q) {
+    if (!q || !status?.ready) {
       setResults([])
       setBusy(false)
       return
     }
-    const control = new AbortController()
+    const ticket = ++latest.current
     setBusy(true)
     const timer = setTimeout(() => {
-      searchDict(q, control.signal)
+      searchDict(q)
         .then((rows) => {
+          if (ticket !== latest.current) return
           setResults(rows)
           setOpen((current) => (rows.some((row) => `${row.hanzi}|${row.pinyin}` === current) ? current : null))
         })
-        .catch((reason) => {
-          if (!control.signal.aborted) setError(reason instanceof Error ? reason.message : 'Словарь не ответил.')
-        })
-        .finally(() => {
-          if (!control.signal.aborted) setBusy(false)
-        })
-    }, 180)
-    return () => {
-      clearTimeout(timer)
-      control.abort()
-    }
-  }, [query])
+        .catch((reason) => ticket === latest.current && setError(reason instanceof Error ? reason.message : 'Поиск не удался.'))
+        .finally(() => ticket === latest.current && setBusy(false))
+    }, 60)
+    return () => clearTimeout(timer)
+  }, [query, status?.ready])
 
   function hear(text: string) {
     unlockAudio()
@@ -69,10 +111,29 @@ export function Dictionary() {
         {busy && <span className="dict-spin" aria-hidden="true" />}
       </div>
 
-      {!query.trim() && (
+      {status && !status.ready && (
+        <div className="block dict-intro" data-art="scrolls">
+          <h2>Словарь в телефон</h2>
+          <p>Скачаю один раз, около 18 МБ. Дальше поиск работает без интернета и мгновенно.</p>
+          {progress !== null ? (
+            <div className="dict-progress" role="progressbar" aria-valuenow={Math.round(progress * 100)}>
+              <i style={{ width: `${Math.round(progress * 100)}%` }} />
+              <span>{progress < 1 ? `Скачиваю · ${Math.round(progress * 100)}%` : 'Раскладываю по полкам…'}</span>
+            </div>
+          ) : (
+            <button type="button" className="primary" onClick={() => void install()}>
+              Скачать словарь
+            </button>
+          )}
+        </div>
+      )}
+      {!status && !error && <p className="fine center">Открываю словарь…</p>}
+
+      {status?.ready && !query.trim() && (
         <div className="block dict-intro" data-art="scrolls">
           <p>
-            Начало пиньиня без тонов или с цифрами, иероглифы или русское слово — ищу сразу, пока печатаешь.
+            Начало пиньиня без тонов или с цифрами, иероглифы или русское слово — ищу сразу, пока печатаешь. Работает без
+            интернета.
           </p>
           <div className="dict-tries">
             {TRIES.map((item) => (
@@ -82,14 +143,24 @@ export function Dictionary() {
             ))}
           </div>
           <p className="fine">
-            Статьи — 大БКРС, Большой китайско-русский словарь (bkrs.info), около 180 тысяч ходовых слов. Порядок — по частоте в
-            живом языке.
+            Статьи — 大БКРС, Большой китайско-русский словарь (bkrs.info), {Math.round(status.count / 1000)} тыс. ходовых слов.
+            Порядок — по частоте в живом языке. База от {formatVersion(status.installed)}.
           </p>
+          {fresh &&
+            (progress !== null ? (
+              <p className="fine">Обновляю · {Math.round(progress * 100)}%</p>
+            ) : (
+              <button type="button" className="text-btn" onClick={() => void install()}>
+                Есть свежая база от {formatVersion(fresh)} · обновить
+              </button>
+            ))}
         </div>
       )}
 
       {error && <p className="warn">{error}</p>}
-      {query.trim() && !busy && !error && !results.length && <p className="fine center">Ничего не нашлось. Попробуй короче или другим способом.</p>}
+      {status?.ready && query.trim() && !busy && !error && !results.length && (
+        <p className="fine center">Ничего не нашлось. Попробуй короче или другим способом.</p>
+      )}
 
       {results.length > 0 && (
         <ul className="dict-list">
@@ -190,6 +261,11 @@ function Article({ hit, onSpeak, onSearch }: { hit: DictHit; onSpeak: (text: str
       <Strokes hanzi={hit.hanzi} />
     </div>
   )
+}
+
+function formatVersion(version: string | null) {
+  if (!version) return ''
+  return `${version.slice(6, 8)}.${version.slice(4, 6)}.${version.slice(0, 4)}`
 }
 
 function hiddenExamples(lines: { example: boolean }[]) {

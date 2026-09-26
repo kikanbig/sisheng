@@ -1,33 +1,84 @@
-export type DictHit = { hanzi: string; pinyin: string; short: string }
-export type DictEntry = { hanzi: string; pinyin: string; body: string }
+import type { DictReply, DictRequest } from './dict.worker'
 
+export type DictHit = { id: number; hanzi: string; pinyin: string; short: string }
+export type DictEntry = { hanzi: string; pinyin: string; body: string }
+export type DictStatus = { installed: string | null; ready: boolean; count: number }
 export type DictLine = { level: number; text: string; example: boolean }
 
-const hits = new Map<string, DictHit[]>()
-const entries = new Map<string, DictEntry[]>()
+type Listener = (reply: DictReply) => void
 
-async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(url, { signal })
-  const data = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(data.error || 'Словарь не ответил.')
-  return data as T
+let worker: Worker | null = null
+let seq = 0
+const listeners = new Set<Listener>()
+
+function send(message: DictRequest) {
+  if (!worker) {
+    worker = new Worker(new URL('./dict.worker.ts', import.meta.url), { type: 'module' })
+    worker.onmessage = (event: MessageEvent<DictReply>) => {
+      for (const listener of listeners) listener(event.data)
+    }
+  }
+  worker.postMessage(message)
 }
 
-export async function searchDict(query: string, signal?: AbortSignal) {
-  const key = query.trim().toLowerCase()
-  const cached = hits.get(key)
-  if (cached) return cached
-  const data = await getJson<{ results: DictHit[] }>(`/api/dict?q=${encodeURIComponent(key)}`, signal)
-  hits.set(key, data.results)
-  return data.results
+function once<T extends DictReply['type']>(type: T, match: (reply: Extract<DictReply, { type: T }>) => boolean = () => true) {
+  return new Promise<Extract<DictReply, { type: T }>>((resolve, reject) => {
+    const listener: Listener = (reply) => {
+      if (reply.type === 'error') {
+        listeners.delete(listener)
+        reject(new Error(reply.message))
+      } else if (reply.type === type && match(reply as Extract<DictReply, { type: T }>)) {
+        listeners.delete(listener)
+        resolve(reply as Extract<DictReply, { type: T }>)
+      }
+    }
+    listeners.add(listener)
+  })
+}
+
+export async function dictStatus(): Promise<DictStatus> {
+  const reply = once('status')
+  send({ type: 'status' })
+  return reply
+}
+
+export async function installDict(onProgress: (loaded: number, total: number) => void): Promise<DictStatus> {
+  const progress: Listener = (reply) => {
+    if (reply.type === 'progress') onProgress(reply.loaded, reply.total)
+  }
+  listeners.add(progress)
+  void navigator.storage?.persist?.()
+  try {
+    const reply = once('status')
+    send({ type: 'install' })
+    return await reply
+  } finally {
+    listeners.delete(progress)
+  }
+}
+
+export async function latestDict(): Promise<string | null> {
+  try {
+    const response = await fetch('/dict/manifest.json', { cache: 'no-store' })
+    if (!response.ok) return null
+    return ((await response.json()) as { version: string }).version
+  } catch {
+    return null
+  }
+}
+
+export async function searchDict(query: string) {
+  const id = ++seq
+  const reply = once('results', (row) => row.seq === id)
+  send({ type: 'search', q: query, seq: id })
+  return (await reply).results
 }
 
 export async function loadEntries(hanzi: string) {
-  const cached = entries.get(hanzi)
-  if (cached) return cached
-  const data = await getJson<{ entries: DictEntry[] }>(`/api/dict/word?h=${encodeURIComponent(hanzi)}`)
-  entries.set(hanzi, data.entries)
-  return data.entries
+  const id = ++seq
+  const reply = once('entries', (row) => row.seq === id)
+  send({ type: 'entries', hanzi, seq: id })
+  return (await reply).entries
 }
 
 export function dictLines(body: string): DictLine[] {
