@@ -49,7 +49,7 @@ type Store = {
   settings: Settings
   stats: Stats
   newSeen: Record<string, number>
-  tab: 'today' | 'lists' | 'progress'
+  tab: 'today' | 'lists' | 'dict' | 'progress'
   session: Session | null
   setTab: (tab: Store['tab']) => void
   updateSettings: (patch: Partial<Settings>) => void

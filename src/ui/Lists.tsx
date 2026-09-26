@@ -348,7 +348,7 @@ async function shrinkPhoto(file: File) {
   return canvas.toDataURL('image/jpeg', 0.72)
 }
 
-function Speaker() {
+export function Speaker() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M4 10v4h3l4 3V7L7 10H4z" fill="currentColor" />

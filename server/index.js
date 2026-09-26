@@ -4,12 +4,12 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { EdgeTTS } from 'edge-tts-universal'
+import { dictReady, loadDict, lookupDict, searchDict } from './dict.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const root = path.resolve(__dirname, '..')
 const dist = path.join(root, 'dist')
 const port = Number(process.env.PORT || 8787)
-const model = process.env.ANYMODEL_MODEL || 'ag/gemini-2.5-flash-lite'
 
 function loadEnvFile() {
   const file = path.join(root, '.env')
@@ -25,6 +25,9 @@ function loadEnvFile() {
   }
 }
 loadEnvFile()
+
+const model = process.env.ANYMODEL_MODEL || 'cc/claude-sonnet-5'
+const FALLBACKS = ['ag/gemini-3.7-flash-low', 'ag/gemini-2.5-flash']
 
 const VOICES = new Set([
   'zh-CN-XiaoxiaoNeural',
@@ -145,12 +148,13 @@ async function askModel(system, user, maxTokens, image) {
     error.status = 503
     throw error
   }
-  const names = model === 'ag/gemini-2.5-flash' ? [model] : [model, 'ag/gemini-2.5-flash']
+  const names = [model, ...FALLBACKS.filter((name) => name !== model)]
   let last = new Error('ai-failed')
   for (const name of names) {
-    for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
       const response = await fetch('https://anymodel.org/v1/chat/completions', {
         method: 'POST',
+        signal: AbortSignal.timeout(30000),
         headers: {
           authorization: `Bearer ${key}`,
           'content-type': 'application/json',
@@ -158,7 +162,7 @@ async function askModel(system, user, maxTokens, image) {
         body: JSON.stringify({
           model: name,
           temperature: 0.4,
-          max_tokens: maxTokens,
+          max_tokens: maxTokens * 2,
           messages: [
             { role: 'system', content: system },
             {
@@ -176,15 +180,33 @@ async function askModel(system, user, maxTokens, image) {
       const payload = await response.json().catch(() => ({}))
       if (response.ok) {
         const content = payload?.choices?.[0]?.message?.content
-        if (!content) throw new Error('empty-ai')
-        return stripJson(content)
+        if (content) return tidyHanzi(stripJson(content))
+        last = new Error('empty-ai')
+        continue
       }
       last = new Error(payload?.error?.message || 'ai-failed')
       last.status = response.status
-      if (response.status !== 502 && response.status !== 503) throw last
+      if (response.status === 401 || response.status === 403) throw last
+    } catch (error) {
+      if (error?.status === 401 || error?.status === 403) throw error
+      last = error instanceof Error ? error : new Error('ai-failed')
     }
+    console.error('ai', name, last.message)
   }
+  last.status = 502
   throw last
+}
+
+function tidyHanzi(value) {
+  if (Array.isArray(value)) return value.map(tidyHanzi)
+  if (!value || typeof value !== 'object') return value
+  const out = {}
+  for (const [key, item] of Object.entries(value)) {
+    out[key] = key === 'hanzi' && typeof item === 'string'
+      ? item.trim().replace(/(\p{Script=Han})\s+(?=\p{Script=Han})/gu, '$1')
+      : tidyHanzi(item)
+  }
+  return out
 }
 
 const SYSTEM = [
@@ -230,6 +252,33 @@ app.post('/api/tts', async (req, res) => {
     console.error('tts', error instanceof Error ? error.message : error)
     res.status(502).json({ error: 'Голос сейчас не ответил.' })
   }
+})
+
+app.get('/api/dict', (req, res) => {
+  if (limited(req, 'dict', 3000, 60 * 60 * 1000)) {
+    res.status(429).json({ error: 'Слишком много запросов к словарю. Подожди немного.' })
+    return
+  }
+  if (!dictReady()) {
+    res.status(503).json({ error: 'Словарь ещё загружается, попробуй через пару секунд.' })
+    return
+  }
+  res.setHeader('cache-control', 'public, max-age=3600')
+  res.json({ results: searchDict(String(req.query.q || '')) })
+})
+
+app.get('/api/dict/word', (req, res) => {
+  if (limited(req, 'dict', 3000, 60 * 60 * 1000)) {
+    res.status(429).json({ error: 'Слишком много запросов к словарю. Подожди немного.' })
+    return
+  }
+  if (!dictReady()) {
+    res.status(503).json({ error: 'Словарь ещё загружается, попробуй через пару секунд.' })
+    return
+  }
+  const hanzi = String(req.query.h || '').trim().slice(0, 16)
+  res.setHeader('cache-control', 'public, max-age=3600')
+  res.json({ entries: hanzi ? lookupDict(hanzi) : [] })
 })
 
 const glossCache = new Map()
@@ -418,4 +467,7 @@ if (fs.existsSync(dist)) {
 
 app.listen(port, '0.0.0.0', () => {
   console.log(`sisheng listening on ${port}`)
+  setImmediate(() => {
+    if (!loadDict(path.join(__dirname, 'data', 'bkrs.tsv.gz'))) console.error('dict: нет server/data/bkrs.tsv.gz')
+  })
 })

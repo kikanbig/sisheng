@@ -6,6 +6,8 @@ PWA для китайского на русском: карточки с инт�
 
 Слова HSK 2–6 взяты из [LiudmilaLV/json_hsk](https://github.com/LiudmilaLV/json_hsk) (русский с [chineseplus.club](https://chineseplus.club/)). Цвета интерфейса — палитра [Radix Colors](https://github.com/radix-ui/colors). Черты — [Hanzi Writer](https://github.com/chanind/hanzi-writer).
 
+Вкладка «Словарь» ищет по началу пиньиня (с тонами цифрами или без), по иероглифам и по-русски. Статьи — [大БКРС](https://bkrs.info/p47), базы которого можно использовать свободно; в сборку попадают слова из частотного словаря [jieba](https://github.com/fxsjy/jieba) (MIT), по нему же сортируется выдача. Обновить базу: `node scripts/build-dict.mjs` — скачает свежую выгрузку и перезапишет `server/data/bkrs.tsv.gz`.
+
 ## Запуск
 
 ```bash
@@ -21,7 +23,7 @@ npm run dev
 | Имя | Зачем |
 | --- | --- |
 | `ANYMODEL_API_KEY` | Ключ [AnyModel](https://anymodel.org/). Только на сервере, в браузер не попадает. |
-| `ANYMODEL_MODEL` | Модель объяснений. По умолчанию `ag/gemini-2.5-flash-lite`. |
+| `ANYMODEL_MODEL` | Модель объяснений. По умолчанию `cc/claude-sonnet-5`; если она занята, сервер пробует `ag/gemini-3.7-flash-low`, затем `ag/gemini-2.5-flash`. |
 | `PORT` | Порт сервера. На Railway задаётся сам. |
 
 Без ключа карточки и озвучка работают, кнопки «Объяснить» и «Заполнить по иероглифу» отвечают, что ИИ не подключён.

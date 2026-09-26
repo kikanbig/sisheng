@@ -1,12 +1,14 @@
 import { Session } from './ui/Session'
 import { Today } from './ui/Today'
 import { Lists } from './ui/Lists'
+import { Dictionary } from './ui/Dictionary'
 import { Progress } from './ui/Progress'
 import { useStore } from './store'
 
 const TABS = [
   { id: 'today', label: 'Сегодня' },
   { id: 'lists', label: 'Списки' },
+  { id: 'dict', label: 'Словарь' },
   { id: 'progress', label: 'Память' },
 ] as const
 
@@ -55,6 +57,7 @@ export function App() {
       <main key={store.tab}>
         {store.tab === 'today' && <Today />}
         {store.tab === 'lists' && <Lists />}
+        {store.tab === 'dict' && <Dictionary />}
         {store.tab === 'progress' && <Progress />}
       </main>
       <nav className="tabs" style={{ ['--i' as string]: TABS.findIndex((tab) => tab.id === store.tab) }}>
