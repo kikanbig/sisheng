@@ -1,19 +1,32 @@
 import { useState } from 'react'
+import { loadSenses, type Sense } from '../lib/senses'
 import { Pinyin } from './Pinyin'
+import { SenseList } from './Senses'
 import type { Word } from '../types'
 
 type Payload = Record<string, unknown>
+type Kind = 'explain' | 'mnemonic' | 'example' | 'senses'
 
-export function AiPanel({ word }: { word: Word }) {
+export function AiPanel({ word, onSpeak }: { word: Word; onSpeak?: (text: string) => void }) {
   const [loading, setLoading] = useState('')
   const [error, setError] = useState('')
-  const [kind, setKind] = useState('')
+  const [kind, setKind] = useState<Kind | ''>('')
   const [data, setData] = useState<Payload | null>(null)
+  const [senses, setSenses] = useState<Sense[] | null>(null)
 
-  async function ask(next: 'explain' | 'mnemonic' | 'example') {
+  async function ask(next: Kind) {
+    if (kind === next && next !== 'example' && (next === 'senses' ? senses : data)) {
+      setKind('')
+      return
+    }
     setLoading(next)
     setError('')
     try {
+      if (next === 'senses') {
+        setSenses(await loadSenses(word.hanzi, word.pinyin, word.ru))
+        setKind(next)
+        return
+      }
       const response = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -40,14 +53,17 @@ export function AiPanel({ word }: { word: Word }) {
   return (
     <section className="ai">
       <div className="ai-actions">
-        <button type="button" onClick={() => ask('explain')} disabled={!!loading}>
+        <button type="button" className={kind === 'explain' ? 'on' : undefined} onClick={() => ask('explain')} disabled={!!loading}>
           {loading === 'explain' ? 'Думаю…' : 'Объяснить'}
         </button>
-        <button type="button" onClick={() => ask('mnemonic')} disabled={!!loading}>
+        <button type="button" className={kind === 'mnemonic' ? 'on' : undefined} onClick={() => ask('mnemonic')} disabled={!!loading}>
           {loading === 'mnemonic' ? 'Думаю…' : 'Мнемоника'}
         </button>
-        <button type="button" onClick={() => ask('example')} disabled={!!loading}>
+        <button type="button" className={kind === 'example' ? 'on' : undefined} onClick={() => ask('example')} disabled={!!loading}>
           {loading === 'example' ? 'Думаю…' : 'Ещё пример'}
+        </button>
+        <button type="button" className={kind === 'senses' ? 'on' : undefined} onClick={() => ask('senses')} disabled={!!loading}>
+          {loading === 'senses' ? 'Ищу…' : 'Другие значения'}
         </button>
       </div>
       {error && <p className="warn">{error}</p>}
@@ -75,7 +91,8 @@ export function AiPanel({ word }: { word: Word }) {
           <p>{example.ru}</p>
         </div>
       )}
-      {data && <p className="fine">Модель иногда путает тон. Сверь пиньинь с карточкой.</p>}
+      {senses && kind === 'senses' && <SenseList senses={senses} pinyin={word.pinyin} ru={word.ru} onSpeak={onSpeak} />}
+      {kind && <p className="fine">Модель иногда путает тон. Сверь пиньинь с карточкой.</p>}
     </section>
   )
 }

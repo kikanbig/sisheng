@@ -233,6 +233,7 @@ app.post('/api/tts', async (req, res) => {
 })
 
 const glossCache = new Map()
+const sensesCache = new Map()
 
 app.post('/api/ai', async (req, res) => {
   const kind = String(req.body?.kind || '')
@@ -295,6 +296,44 @@ app.post('/api/ai', async (req, res) => {
         500,
       )
       res.json(data)
+      return
+    }
+    if (kind === 'senses') {
+      const hanzi = String(req.body.hanzi || '').trim().slice(0, 16)
+      const pinyin = String(req.body.pinyin || '').trim().slice(0, 80)
+      const ru = String(req.body.ru || '').trim().slice(0, 80)
+      const key = `${hanzi}|${pinyin}|${ru}`
+      const cached = sensesCache.get(key)
+      if (cached) {
+        res.json(cached)
+        return
+      }
+      const data = await askModel(
+        SYSTEM,
+        `Слово: ${hanzi} (${pinyin}), основное значение — «${ru}». Перечисли другие значения этого слова, кроме основного, от частых к редким, не больше 5. Если у иероглифа есть другое чтение, включи и значения с ним; pinyin — как читается именно в этом значении. Для каждого: pinyin; ru — 1–4 слова; example — короткая естественная фраза или сочетание уровня HSK 1–3, как говорят носители, именно с этим значением. Не повторяй основное значение и его оттенки. Бери только значения, которые реально встречаются в современном языке и есть в словарях; если сомневаешься в значении или примере — не включай. Если других значений нет, верни пустой список. JSON: {"senses":[{"pinyin":"","ru":"","example":{"hanzi":"","pinyin":"","ru":""}}]}`,
+        900,
+      )
+      const senses = Array.isArray(data?.senses) ? data.senses : []
+      const clean = {
+        senses: senses
+          .filter((row) => row && typeof row.ru === 'string' && row.ru.trim())
+          .slice(0, 5)
+          .map((row) => ({
+            pinyin: String(row.pinyin || '').trim(),
+            ru: String(row.ru).trim(),
+            example:
+              row.example && typeof row.example.hanzi === 'string' && row.example.hanzi.trim()
+                ? {
+                    hanzi: row.example.hanzi.replace(/\s+/g, ''),
+                    pinyin: String(row.example.pinyin || '').trim(),
+                    ru: String(row.example.ru || '').trim(),
+                  }
+                : null,
+          })),
+      }
+      sensesCache.set(key, clean)
+      if (sensesCache.size > 2000) sensesCache.delete(sensesCache.keys().next().value)
+      res.json(clean)
       return
     }
     if (kind === 'mnemonic') {

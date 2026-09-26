@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { alignGloss, cachedGloss, loadGloss, type GlossPart, type GlossWord } from '../lib/gloss'
 import { syllables } from '../lib/pinyin'
+import { loadSenses, type Sense } from '../lib/senses'
 import { Pinyin } from './Pinyin'
+import { SenseList } from './Senses'
 
 type Explain = { hook?: string; usage?: string; trap?: string }
 
@@ -117,6 +119,9 @@ function GlossCard({ word, onSpeak }: { word: GlossWord; onSpeak: (text: string)
   const [more, setMore] = useState<Explain | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [senses, setSenses] = useState<Sense[] | null>(null)
+  const [showSenses, setShowSenses] = useState(false)
+  const [sensesBusy, setSensesBusy] = useState(false)
 
   async function explain() {
     setBusy(true)
@@ -134,6 +139,23 @@ function GlossCard({ word, onSpeak }: { word: GlossWord; onSpeak: (text: string)
       setError(reason instanceof Error ? reason.message : 'Не вышло')
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function toggleSenses() {
+    if (senses) {
+      setShowSenses(!showSenses)
+      return
+    }
+    setSensesBusy(true)
+    setError('')
+    try {
+      setSenses(await loadSenses(word.hanzi, word.pinyin, word.ru))
+      setShowSenses(true)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Не вышло')
+    } finally {
+      setSensesBusy(false)
     }
   }
 
@@ -165,8 +187,12 @@ function GlossCard({ word, onSpeak }: { word: GlossWord; onSpeak: (text: string)
             {busy ? 'Думаю…' : 'Подробнее'}
           </button>
         )}
+        <button type="button" className={senses && showSenses ? 'on' : undefined} onClick={() => void toggleSenses()} disabled={sensesBusy}>
+          {sensesBusy ? 'Ищу…' : 'Другие значения'}
+        </button>
       </div>
       {error && <p className="warn">{error}</p>}
+      {senses && showSenses && <SenseList senses={senses} pinyin={word.pinyin} ru={word.ru} onSpeak={onSpeak} />}
       {more && (
         <div className="ai-body">
           {more.hook && <p className="hook">{more.hook}</p>}

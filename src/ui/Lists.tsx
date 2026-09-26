@@ -232,7 +232,7 @@ export function Lists() {
                       <span>{word.example.ru}</span>
                     </div>
                   )}
-                  <AiPanel word={word} />
+                  <AiPanel word={word} onSpeak={hear} />
                   <Strokes hanzi={word.hanzi} />
                 </div>
               )}

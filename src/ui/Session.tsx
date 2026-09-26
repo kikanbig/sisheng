@@ -593,7 +593,7 @@ function Answer({
         </div>
       )}
       <Strokes hanzi={word.hanzi} />
-      <AiPanel key={`${word.hanzi}|${word.pinyin}`} word={{ ...word, id: word.hanzi, listId: '', kind: 'vocab' }} />
+      <AiPanel key={`${word.hanzi}|${word.pinyin}`} word={{ ...word, id: word.hanzi, listId: '', kind: 'vocab' }} onSpeak={onSpeak} />
     </div>
   )
 }
