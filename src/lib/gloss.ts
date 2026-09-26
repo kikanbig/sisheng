@@ -1,11 +1,12 @@
 import { normalizePinyin } from './pinyin'
 
-export type GlossWord = { hanzi: string; pinyin: string; ru: string; note: string }
+export type GlossChar = { hanzi: string; pinyin: string; ru: string }
+export type GlossWord = { hanzi: string; pinyin: string; ru: string; note: string; chars: GlossChar[] }
 export type GlossPart = { text: string; word?: GlossWord }
 
 const memory = new Map<string, GlossWord[]>()
 const pending = new Map<string, Promise<GlossWord[]>>()
-const storeKey = (text: string) => `gloss:v1:${text}`
+const storeKey = (text: string) => `gloss:v2:${text}`
 
 export function cachedGloss(text: string) {
   const hit = memory.get(text)
@@ -40,6 +41,11 @@ export function loadGloss(text: string) {
         pinyin: normalizePinyin(row.pinyin || ''),
         ru: row.ru || '',
         note: row.note || '',
+        chars: (Array.isArray(row.chars) ? row.chars : []).map((part) => ({
+          hanzi: part.hanzi,
+          pinyin: normalizePinyin(part.pinyin || ''),
+          ru: part.ru || '',
+        })),
       }))
       memory.set(text, words)
       try {

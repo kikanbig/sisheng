@@ -414,6 +414,20 @@ h2 { font-size: 1.05rem; letter-spacing: -0.03em; }
 .gloss-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
 .gloss-head .hanzi { font-size: 1.3rem; }
 .gloss-note { margin: 0; color: var(--muted); font-size: 0.9rem; }
+.gloss-chars { display: flex; gap: 6px; flex-wrap: wrap; }
+.gloss-chars button {
+  flex: 1 1 0;
+  min-width: 72px;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: transparent;
+}
+.gloss-chars .hanzi { font-size: 1.4rem; }
+.gloss-chars small { color: var(--muted); font-size: 0.78rem; text-align: center; }
 .gloss-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .gloss-actions button { border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: 6px 12px; }
 .teach-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }

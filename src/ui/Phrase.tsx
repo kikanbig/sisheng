@@ -104,6 +104,17 @@ function GlossCard({ word, onSpeak }: { word: GlossWord; onSpeak: (text: string)
         <span>{word.ru}</span>
       </div>
       {word.note && <p className="gloss-note">{word.note}</p>}
+      {word.chars.length > 1 && (
+        <div className="gloss-chars">
+          {word.chars.map((part, index) => (
+            <button key={index} type="button" onClick={() => onSpeak(part.hanzi)}>
+              <b className="hanzi">{part.hanzi}</b>
+              <Pinyin text={part.pinyin} />
+              <small>{part.ru}</small>
+            </button>
+          ))}
+        </div>
+      )}
       <div className="gloss-actions">
         <button type="button" onClick={() => onSpeak(word.hanzi)}>
           Слушать
