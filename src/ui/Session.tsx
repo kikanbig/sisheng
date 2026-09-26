@@ -6,6 +6,7 @@ import { dayWord } from '../lib/srs'
 import type { Grade } from '../types'
 import { useStore } from '../store'
 import { AiPanel } from './AiPanel'
+import { Phrase } from './Phrase'
 import { Contour, Pinyin, syllableTone } from './Pinyin'
 import { SpeedPicker } from './Speed'
 import { StrokeQuiz, Strokes } from './Strokes'
@@ -161,19 +162,36 @@ export function Session() {
     setAttempt((value) => value + 1)
   }
 
-  function commit(value: Grade) {
-    const nextIndex = round.index + 1
+  function voiceNext(skipWordId?: string) {
+    let nextIndex = round.index + 1
+    while (skipWordId && round.items[nextIndex]?.word.id === skipWordId) nextIndex += 1
     const next = round.items[nextIndex]
-    if (next) {
-      voiced.current = nextIndex
-      void speak(next.word.hanzi, voiceFor(next.word.id), store.settings.speed, round.mode === 'tones' ? 'tones' : 'vocab')
-        .then((kind) => {
-          if (kind === 'miss') retry(nextIndex)
-        })
-        .catch(() => retry(nextIndex))
-    }
+    if (!next) return
+    const target = skipWordId ? round.index + 1 : nextIndex
+    voiced.current = target
+    void speak(next.word.hanzi, voiceFor(next.word.id), store.settings.speed, round.mode === 'tones' ? 'tones' : 'vocab')
+      .then((kind) => {
+        if (kind === 'miss') retry(target)
+      })
+      .catch(() => retry(target))
+  }
+
+  function commit(value: Grade) {
+    voiceNext()
     store.grade(word, round.mode, value)
     if (value === 'again') store.pushAgain(cardItem)
+    store.advance()
+  }
+
+  function learnLater() {
+    voiceNext()
+    store.advance()
+  }
+
+  function alreadyKnow() {
+    voiceNext(word.id)
+    store.grade(word, round.mode, 'good')
+    store.skipAhead(word.id)
     store.advance()
   }
 
@@ -189,7 +207,7 @@ export function Session() {
     commit(correct ? 'good' : 'again')
   }
 
-  const canSwipe = !cardItem.teach && round.mode !== 'tones' && (revealed || round.mode !== 'write')
+  const canSwipe = cardItem.teach || (round.mode !== 'tones' && (revealed || round.mode !== 'write'))
 
   function settle(moved: number) {
     drag.current = null
@@ -197,12 +215,14 @@ export function Session() {
     setDx(0)
     if (moved > 88) {
       swiped.current = true
-      commit('good')
+      if (cardItem.teach) alreadyKnow()
+      else commit('good')
       return
     }
     if (moved < -88) {
       swiped.current = true
-      commit('again')
+      if (cardItem.teach) learnLater()
+      else commit('again')
     }
   }
 
@@ -210,16 +230,9 @@ export function Session() {
     unlockAudio()
     if (!canSwipe || !event.isPrimary || performance.now() < swipeAt.current) return
     const target = event.target as HTMLElement
-    const example = Boolean(target.closest('.example'))
-    if (!example && target.closest('button, a, input, textarea, canvas')) return
+    const example = Boolean(target.closest('.example, .phrase'))
+    if (!example && target.closest('button, a, input, textarea, canvas, .gloss')) return
     drag.current = { x: event.clientX, y: event.clientY, id: event.pointerId, active: false, example }
-    if (example) {
-      try {
-        event.currentTarget.setPointerCapture(event.pointerId)
-      } catch {
-        // указатель уже отпущен — жест всё равно продолжаем
-      }
-    }
   }
 
   function swipeMove(event: React.PointerEvent) {
@@ -255,7 +268,14 @@ export function Session() {
     if (event.key === 'Escape') store.endSession()
     if (cardItem.teach && (event.key === ' ' || event.key === 'Enter')) {
       event.preventDefault()
-      store.advance()
+      learnLater()
+      return
+    }
+    if (cardItem.teach && (event.key === 'ArrowRight' || event.key === 'ArrowLeft')) {
+      event.preventDefault()
+      if (event.key === 'ArrowRight') alreadyKnow()
+      else learnLater()
+      return
     }
     if (!cardItem.teach && round.mode !== 'tones' && !revealed && (event.key === ' ' || event.key === 'Enter')) {
       event.preventDefault()
@@ -321,15 +341,15 @@ export function Session() {
         {canSwipe && (
           <div className="swipe-tags">
             <span className="swipe-tag yes" style={{ opacity: Math.min(1, Math.max(0, dx) / 88) }}>
-              Реже
+              {item.teach ? 'Уже знаю' : 'Реже'}
             </span>
             <span className="swipe-tag no" style={{ opacity: Math.min(1, Math.max(0, -dx) / 88) }}>
-              Ещё раз
+              {item.teach ? 'Проверь позже' : 'Ещё раз'}
             </span>
           </div>
         )}
         {item.teach ? (
-          <Teach wordHanzi={word.hanzi} onPlay={() => play()} />
+          <Teach wordHanzi={word.hanzi} onPlay={() => play()} onSpeak={(text) => play(text)} />
         ) : session.mode === 'tones' ? (
           <ToneFace
             hanzi={word.hanzi}
@@ -355,11 +375,19 @@ export function Session() {
             word={word}
             onPlay={() => (session.mode === 'read' ? replay() : play())}
             onExample={() => word.example && (session.mode === 'read' ? replay(word.example.hanzi) : play(word.example.hanzi))}
-            simple={session.drill}
+            onSpeak={(text) => play(text)}
           />
         )}
 
-        {item.teach && <Answer word={word} onPlay={() => play()} onExample={() => word.example && play(word.example.hanzi)} teach />}
+        {item.teach && (
+          <Answer
+            word={word}
+            onPlay={() => play()}
+            onExample={() => word.example && play(word.example.hanzi)}
+            onSpeak={(text) => play(text)}
+            teach
+          />
+        )}
 
         {item.teach && word.choices && word.choices.length > 1 && (
           <div className="choice-grid">
@@ -390,9 +418,17 @@ export function Session() {
 
       <footer className="session-foot">
         {item.teach ? (
-          <button type="button" className="primary" onClick={store.advance}>
-            Запомнил, спросить
-          </button>
+          <>
+            <div className="teach-actions">
+              <button type="button" className="ghost" onClick={alreadyKnow}>
+                Уже знаю
+              </button>
+              <button type="button" className="primary" onClick={learnLater}>
+                Проверь позже
+              </button>
+            </div>
+            <p className="fine center">Вправо — уже знаю, не спрашивать. Влево — учу, проверь меня в этом занятии.</p>
+          </>
         ) : session.mode === 'tones' ? (
           revealed ? (
             <button type="button" className="primary" onClick={finishTone}>
@@ -415,13 +451,14 @@ function faceClass(text: string, size: 'xl' | 'lg') {
   return `hanzi hanzi-${size}${[...text].length >= 5 ? ' is-long' : ''}`
 }
 
-function Teach({ wordHanzi, onPlay }: { wordHanzi: string; onPlay: () => void }) {
+function Teach({ wordHanzi, onPlay, onSpeak }: { wordHanzi: string; onPlay: () => void; onSpeak: (text: string) => void }) {
   return (
     <div className="teach-mark">
-      <p className="eyebrow">сначала посмотри и услышь</p>
+      <p className="eyebrow">новое слово · посмотри и услышь</p>
       <button type="button" className={`${faceClass(wordHanzi, 'xl')} bare`} onClick={onPlay}>
         {wordHanzi}
       </button>
+      <Phrase text={wordHanzi} onSpeak={onSpeak} chips />
     </div>
   )
 }
@@ -484,21 +521,24 @@ function Answer({
   word,
   onPlay,
   onExample,
+  onSpeak,
   teach = false,
-  simple = false,
 }: {
   word: { hanzi: string; pinyin: string; ru: string; pos?: string; note?: string; example?: { hanzi: string; pinyin: string; ru: string } }
   onPlay: () => void
   onExample: () => void
+  onSpeak: (text: string) => void
   teach?: boolean
-  simple?: boolean
 }) {
   return (
     <div className="answer">
       {!teach && (
-        <button type="button" className={`${faceClass(word.hanzi, 'lg')} bare`} onClick={onPlay}>
-          {word.hanzi}
-        </button>
+        <>
+          <button type="button" className={`${faceClass(word.hanzi, 'lg')} bare`} onClick={onPlay}>
+            {word.hanzi}
+          </button>
+          <Phrase text={word.hanzi} onSpeak={onSpeak} chips />
+        </>
       )}
       <Pinyin text={word.pinyin} className="pinyin-lg" />
       <p className="meaning">
@@ -507,14 +547,30 @@ function Answer({
       </p>
       {word.note && <p className="note">{word.note}</p>}
       {word.example && (
-        <button type="button" className="example" onClick={onExample}>
-          <span className="hanzi">{word.example.hanzi}</span>
+        <div className="example">
+          <div className="example-head">
+            <small>пример · нажми на слово</small>
+            <button type="button" className="hear" aria-label="Слушать пример" onClick={onExample}>
+              <SpeakerIcon />
+            </button>
+          </div>
+          <Phrase text={word.example.hanzi} onSpeak={onSpeak} />
           <Pinyin text={word.example.pinyin} />
           <span>{word.example.ru}</span>
-        </button>
+        </div>
       )}
-      {!simple && <Strokes hanzi={word.hanzi} />}
-      {!teach && !simple && <AiPanel key={`${word.hanzi}|${word.pinyin}`} word={{ ...word, id: word.hanzi, listId: '', kind: 'vocab' }} />}
+      <Strokes hanzi={word.hanzi} />
+      <AiPanel key={`${word.hanzi}|${word.pinyin}`} word={{ ...word, id: word.hanzi, listId: '', kind: 'vocab' }} />
     </div>
+  )
+}
+
+function SpeakerIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 10v4h3l4 3V7L7 10H4z" fill="currentColor" />
+      <path d="M16 9.5a3.5 3.5 0 0 1 0 5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M18.2 7.2a6.5 6.5 0 0 1 0 9.6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
   )
 }

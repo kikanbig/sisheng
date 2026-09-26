@@ -10,21 +10,9 @@ function paintColor(variable: string, fallback: string) {
 }
 
 type StrokeWriter = {
-  animateStroke: (strokeNum: number) => Promise<unknown>
+  animateCharacter: () => Promise<unknown>
   showCharacter: (options?: { duration?: number }) => Promise<unknown>
   pauseAnimation: () => Promise<unknown>
-  getCharacterData: () => Promise<{ strokes: { isInRadical: boolean }[] }>
-}
-
-async function playRadical(writer: StrokeWriter, token: { current: number }, generation: number) {
-  const data = await writer.getCharacterData()
-  if (token.current !== generation) return
-  const radical = data.strokes.flatMap((stroke, index) => (stroke.isInRadical ? [index] : []))
-  await writer.showCharacter({ duration: 0 })
-  for (const index of radical) {
-    if (token.current !== generation) return
-    await writer.animateStroke(index)
-  }
 }
 
 export function Strokes({ hanzi }: { hanzi: string }) {
@@ -90,7 +78,7 @@ export function Strokes({ hanzi }: { hanzi: string }) {
         void writers.current[i].pauseAnimation()
         void writers.current[i].showCharacter({ duration: 0 })
       }
-      await playRadical(writer, token, generation)
+      await writer.animateCharacter()
       if (token.current === generation) setPlaying(null)
     })()
   }
@@ -99,12 +87,13 @@ export function Strokes({ hanzi }: { hanzi: string }) {
 
   return (
     <div className="strokes">
+      <p className="fine">Порядок черт · красным — ключ, по нему ищут в словаре</p>
       <div className="stroke-row" ref={host}>
         {chars.map((char, index) => (
           <div key={`${hanzi}-${index}`} className="stroke-cell">
-            <div data-char={char} className="stroke-box" />
+            <div data-char={char} className="stroke-box" onClick={() => play(index)} />
             <button type="button" className={playing === index ? 'text-btn stroke-play on' : 'text-btn stroke-play'} onClick={() => play(index)}>
-              Черты ключа
+              {playing === index ? 'Пишу…' : 'Как писать'}
             </button>
           </div>
         ))}

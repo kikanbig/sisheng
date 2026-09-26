@@ -232,13 +232,49 @@ app.post('/api/tts', async (req, res) => {
   }
 })
 
+const glossCache = new Map()
+
 app.post('/api/ai', async (req, res) => {
-  if (limited(req, 'ai', 30, 60 * 60 * 1000)) {
+  const kind = String(req.body?.kind || '')
+  const bucket = kind === 'gloss' ? 'gloss' : 'ai'
+  if (limited(req, bucket, kind === 'gloss' ? 400 : 120, 60 * 60 * 1000)) {
     res.status(429).json({ error: 'Лимит объяснений на этот час исчерпан.' })
     return
   }
-  const kind = String(req.body?.kind || '')
   try {
+    if (kind === 'gloss') {
+      const text = String(req.body.text || '').replace(/\s+/g, ' ').trim().slice(0, 80)
+      if (!/\p{Script=Han}/u.test(text)) {
+        res.json({ words: [] })
+        return
+      }
+      const cached = glossCache.get(text)
+      if (cached) {
+        res.json(cached)
+        return
+      }
+      const data = await askModel(
+        SYSTEM,
+        `Фраза: «${text}». Разбей её на слова в порядке следования. Слово из нескольких иероглифов не дроби. Знаки препинания пропусти. Для каждого слова: hanzi — ровно как во фразе; pinyin — с тоном, как читается здесь; ru — значение именно в этой фразе, 1–4 слова, а у частицы или служебного слова — его вид, например «частица завершённости», «вопросительная частица», «предлог места»; note — для частиц и служебных слов (了, 吗, 的, 呢, 把, 是, 在, 都…) одно предложение, что оно делает в этой фразе, иначе пустая строка. JSON: {"words":[{"hanzi":"","pinyin":"","ru":"","note":""}]}`,
+        700,
+      )
+      const words = Array.isArray(data?.words) ? data.words : []
+      const clean = {
+        words: words
+          .filter((row) => row && typeof row.hanzi === 'string' && row.hanzi.trim())
+          .slice(0, 24)
+          .map((row) => ({
+            hanzi: String(row.hanzi).trim(),
+            pinyin: String(row.pinyin || '').trim(),
+            ru: String(row.ru || '').trim(),
+            note: String(row.note || '').trim(),
+          })),
+      }
+      glossCache.set(text, clean)
+      if (glossCache.size > 2000) glossCache.delete(glossCache.keys().next().value)
+      res.json(clean)
+      return
+    }
     if (kind === 'explain') {
       const hanzi = String(req.body.hanzi || '').slice(0, 16)
       const pinyin = String(req.body.pinyin || '').slice(0, 80)

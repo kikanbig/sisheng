@@ -47,6 +47,7 @@ type Store = {
   endSession: () => void
   grade: (word: Word, mode: Mode, grade: Grade) => void
   pushAgain: (item: QueueItem) => void
+  skipAhead: (wordId: string) => void
   advance: () => void
   addList: (name: string) => string
   removeList: (id: string) => void
@@ -262,6 +263,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const gap = 10 + Math.floor(Math.random() * 11)
         if (ahead < 2) items.splice(Math.min(items.length, current.index + gap), 0, { ...item, teach: false })
         return { ...current, items }
+      })
+    },
+    skipAhead: (wordId) => {
+      setSession((current) => {
+        if (!current) return current
+        const done = current.items.slice(0, current.index + 1)
+        const rest = current.items.slice(current.index + 1).filter((row) => row.word.id !== wordId)
+        return { ...current, items: [...done, ...rest] }
       })
     },
     advance: () => setSession((current) => (current ? { ...current, index: current.index + 1 } : current)),

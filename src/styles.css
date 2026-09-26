@@ -295,7 +295,7 @@ h2 { font-size: 1.05rem; letter-spacing: -0.03em; }
     var(--scene, url('/art/wash.webp')) center / cover no-repeat;
   display: grid;
   justify-items: center;
-  align-content: center;
+  align-content: safe center;
   gap: 14px;
   min-height: 0;
   overflow-x: hidden;
@@ -374,6 +374,51 @@ h2 { font-size: 1.05rem; letter-spacing: -0.03em; }
   color: var(--muted);
   max-width: 46ch;
 }
+.example-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.example-head small { color: var(--muted); font-size: 0.72rem; letter-spacing: 0.04em; }
+.phrase { display: grid; gap: 8px; justify-items: start; width: 100%; }
+.phrase.chips { justify-items: center; }
+.phrase-line { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 2px; font-size: 1.25rem; line-height: 1.5; }
+.phrase.chips .phrase-line { justify-content: center; gap: 6px; font-size: 1.1rem; }
+.token {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  background: transparent;
+  padding: 0 2px;
+  border-bottom: 1.5px dotted color-mix(in srgb, var(--ink) 35%, transparent);
+  border-radius: 4px;
+  touch-action: pan-y;
+  cursor: pointer;
+}
+.phrase.chips .token {
+  display: inline-grid;
+  justify-items: center;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--paper) 70%, transparent);
+}
+.token small { font-family: inherit; font-size: 0.7rem; color: var(--muted); }
+.token.on { background: color-mix(in srgb, var(--cinnabar) 14%, transparent); border-bottom-color: var(--cinnabar); }
+.gloss {
+  width: 100%;
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  text-align: left;
+}
+.gloss-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+.gloss-head .hanzi { font-size: 1.3rem; }
+.gloss-note { margin: 0; color: var(--muted); font-size: 0.9rem; }
+.gloss-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.gloss-actions button { border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: 6px 12px; }
+.teach-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.teach-actions .ghost, .teach-actions .primary { width: 100%; }
+.stroke-box { cursor: pointer; }
 .example {
   touch-action: pan-y;
   width: min(100%, 460px);
