@@ -30,10 +30,37 @@ function element() {
   return player
 }
 
+let silence: string | null = null
+
+function silentUrl() {
+  if (silence) return silence
+  const rate = 8000
+  const samples = 800
+  const buffer = new ArrayBuffer(44 + samples)
+  const view = new DataView(buffer)
+  const tag = (at: number, text: string) => [...text].forEach((char, index) => view.setUint8(at + index, char.charCodeAt(0)))
+  tag(0, 'RIFF')
+  view.setUint32(4, 36 + samples, true)
+  tag(8, 'WAVE')
+  tag(12, 'fmt ')
+  view.setUint32(16, 16, true)
+  view.setUint16(20, 1, true)
+  view.setUint16(22, 1, true)
+  view.setUint32(24, rate, true)
+  view.setUint32(28, rate, true)
+  view.setUint16(32, 1, true)
+  view.setUint16(34, 8, true)
+  tag(36, 'data')
+  view.setUint32(40, samples, true)
+  new Uint8Array(buffer, 44).fill(128)
+  silence = URL.createObjectURL(new Blob([buffer], { type: 'audio/wav' }))
+  return silence
+}
+
 export function unlockAudio() {
   const audio = element()
-  if (audio.src) return
-  audio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA='
+  if (!audio.paused) return
+  audio.src = silentUrl()
   void audio.play().catch(() => undefined)
 }
 
@@ -153,6 +180,8 @@ export async function speak(
     const played = await playUrl(known, mine)
     return played ? 'neural' : 'miss'
   }
+  // iOS пускает звук только из касания, а загрузка его прерывает: будим плеер тишиной сразу
+  unlockAudio()
   try {
     const url = await loadUrl(key, clean, voiceId, speed, mode, mine)
     if (mine !== ticket || !url) return 'miss'
