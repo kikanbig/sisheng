@@ -3,7 +3,10 @@ import { speak, unlockAudio } from '../lib/audio'
 import { normalizePinyin } from '../lib/pinyin'
 import { useStore } from '../store'
 import type { Word } from '../types'
+import { AiPanel } from './AiPanel'
+import { Phrase } from './Phrase'
 import { Pinyin } from './Pinyin'
+import { Strokes } from './Strokes'
 
 export function Lists() {
   const store = useStore()
@@ -16,6 +19,7 @@ export function Lists() {
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
   const [shown, setShown] = useState(60)
+  const [openWord, setOpenWord] = useState<string | null>(null)
 
   const list = store.lists.find((item) => item.id === openId) ?? store.lists[0]
   const words = useMemo(() => {
@@ -191,12 +195,17 @@ export function Lists() {
         <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Найти в списке" />
         <ul className="word-list">
           {words.slice(0, shown).map((word) => (
-            <li key={word.id}>
-              <div>
+            <li key={word.id} className={openWord === word.id ? 'open' : undefined}>
+              <button
+                type="button"
+                className="word-main"
+                aria-expanded={openWord === word.id}
+                onClick={() => setOpenWord(openWord === word.id ? null : word.id)}
+              >
                 <b className="hanzi">{word.hanzi}</b>
                 <Pinyin text={word.pinyin} />
                 <span>{word.ru}</span>
-              </div>
+              </button>
               <span className="word-actions">
                 <button type="button" className="hear" aria-label={`Слушать ${word.hanzi}`} onClick={() => hear(word.hanzi)}>
                   <Speaker />
@@ -207,6 +216,26 @@ export function Lists() {
                   </button>
                 )}
               </span>
+              {openWord === word.id && (
+                <div className="word-more">
+                  {word.note && <p className="note">{word.note}</p>}
+                  {word.example && (
+                    <div className="example">
+                      <div className="example-head">
+                        <small>пример · нажми на слово</small>
+                        <button type="button" className="hear" aria-label="Слушать пример" onClick={() => hear(word.example!.hanzi)}>
+                          <Speaker />
+                        </button>
+                      </div>
+                      <Phrase text={word.example.hanzi} onSpeak={hear} />
+                      <Pinyin text={word.example.pinyin} />
+                      <span>{word.example.ru}</span>
+                    </div>
+                  )}
+                  <AiPanel word={word} />
+                  <Strokes hanzi={word.hanzi} />
+                </div>
+              )}
             </li>
           ))}
         </ul>

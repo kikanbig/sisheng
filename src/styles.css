@@ -522,16 +522,34 @@ input {
   border-radius: 14px;
   padding: 12px 14px;
 }
-.word-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-height: 360px; overflow: auto; }
+.word-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-height: 70vh; overflow: auto; }
 .word-list li {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 12px;
   align-items: center;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--line);
 }
-.word-list li div { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+.word-list li > div:not(.word-more) { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+.word-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  border: 0;
+  background: transparent;
+  padding: 4px 0;
+  cursor: pointer;
+}
+.word-list li.open .word-main .hanzi { color: var(--cinnabar); }
+.word-more { flex: 1 0 100%; display: grid; gap: 10px; justify-items: center; padding: 4px 0 8px; }
 .word-actions { display: flex; align-items: center; gap: 4px; flex: none; }
 .hear {
   width: 36px;
