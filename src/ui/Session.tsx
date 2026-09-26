@@ -588,8 +588,7 @@ function Answer({
               <SpeakerIcon />
             </button>
           </div>
-          <Phrase text={word.example.hanzi} onSpeak={onSpeak} />
-          <Pinyin text={word.example.pinyin} />
+          <Phrase text={word.example.hanzi} onSpeak={onSpeak} pinyin={word.example.pinyin} />
           <span>{word.example.ru}</span>
         </div>
       )}

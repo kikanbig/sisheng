@@ -755,6 +755,16 @@ h2 { font-size: 1.05rem; letter-spacing: -0.03em; }
   box-shadow: 0 1px 2px rgba(32, 26, 16, 0.05);
 }
 .token small { font-family: inherit; font-size: 0.7rem; color: var(--muted); }
+.phrase-line.ruby { gap: 6px 4px; align-items: flex-start; }
+.token-gap { line-height: 1.5; }
+.phrase-line.ruby .token {
+  display: inline-grid;
+  justify-items: center;
+  padding: 2px 5px 3px;
+  border-radius: 10px;
+}
+.token-han { line-height: 1.35; }
+.phrase-line.ruby .token .pinyin { font-size: 0.6em; line-height: 1.25; font-weight: 600; white-space: nowrap; }
 .token.on { background: color-mix(in srgb, var(--cinnabar) 14%, transparent); border-bottom-color: var(--cinnabar); }
 .gloss {
   width: 100%;

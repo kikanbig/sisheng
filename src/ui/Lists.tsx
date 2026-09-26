@@ -218,6 +218,7 @@ export function Lists() {
               </span>
               {openWord === word.id && (
                 <div className="word-more">
+                  <Phrase text={word.hanzi} onSpeak={hear} chips />
                   {word.note && <p className="note">{word.note}</p>}
                   {word.example && (
                     <div className="example">
@@ -227,8 +228,7 @@ export function Lists() {
                           <Speaker />
                         </button>
                       </div>
-                      <Phrase text={word.example.hanzi} onSpeak={hear} />
-                      <Pinyin text={word.example.pinyin} />
+                      <Phrase text={word.example.hanzi} onSpeak={hear} pinyin={word.example.pinyin} />
                       <span>{word.example.ru}</span>
                     </div>
                   )}

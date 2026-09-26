@@ -1,17 +1,36 @@
 import { useEffect, useState } from 'react'
-import { alignGloss, cachedGloss, loadGloss, type GlossWord } from '../lib/gloss'
+import { alignGloss, cachedGloss, loadGloss, type GlossPart, type GlossWord } from '../lib/gloss'
+import { syllables } from '../lib/pinyin'
 import { Pinyin } from './Pinyin'
 
 type Explain = { hook?: string; usage?: string; trap?: string }
+
+const hanCount = (text: string) => [...text].filter((char) => /\p{Script=Han}/u.test(char)).length
+
+function readings(parts: GlossPart[], pinyin: string) {
+  const pool = syllables(pinyin)
+    .map((syllable) => syllable.replace(/[^\p{L}]/gu, ''))
+    .filter(Boolean)
+  const total = parts.reduce((sum, part) => sum + hanCount(part.text), 0)
+  let at = 0
+  return parts.map((part) => {
+    const need = hanCount(part.text)
+    const own = pool.length === total ? pool.slice(at, at + need).join(' ') : part.word?.pinyin || ''
+    at += need
+    return own
+  })
+}
 
 export function Phrase({
   text,
   onSpeak,
   chips = false,
+  pinyin,
 }: {
   text: string
   onSpeak: (text: string) => void
   chips?: boolean
+  pinyin?: string
 }) {
   const [words, setWords] = useState<GlossWord[] | null>(() => cachedGloss(text))
   const [open, setOpen] = useState<number | null>(null)
@@ -39,14 +58,32 @@ export function Phrase({
     }
   }, [text])
 
-  const parts = words ? alignGloss(text, words) : [{ text }]
+  const parts: GlossPart[] = words ? alignGloss(text, words) : [{ text }]
   const tokens = parts.filter((part) => part.word)
-  if (chips && tokens.length < 2) return null
+  if (chips && tokens.length < 2) {
+    const chars = tokens.length === 1 ? tokens[0].word!.chars : []
+    if (chars.length < 2) return null
+    return (
+      <div className="phrase chips">
+        <div className="gloss-chars">
+          {chars.map((part, index) => (
+            <button key={index} type="button" onClick={() => onSpeak(part.hanzi)}>
+              <b className="hanzi">{part.hanzi}</b>
+              <Pinyin text={part.pinyin} />
+              <small>{part.ru}</small>
+            </button>
+          ))}
+        </div>
+      </div>
+    )
+  }
+  const ruby = !chips && pinyin !== undefined && tokens.length > 0
+  const said = ruby ? readings(parts, pinyin) : []
   const current = open !== null ? parts[open]?.word : undefined
 
   return (
     <div className={chips ? 'phrase chips' : 'phrase'}>
-      <p className="hanzi phrase-line">
+      <p className={ruby ? 'hanzi phrase-line ruby' : 'hanzi phrase-line'}>
         {parts.map((part, index) =>
           part.word ? (
             <button
@@ -58,14 +95,18 @@ export function Phrase({
                 if (open !== index && part.word) onSpeak(part.word.hanzi)
               }}
             >
-              {part.text}
+              {ruby ? <span className="token-han">{part.text}</span> : part.text}
+              {ruby && <Pinyin text={said[index]} />}
               {chips && <small>{part.word.pinyin}</small>}
             </button>
           ) : (
-            <span key={index}>{part.text}</span>
+            <span key={index} className={ruby ? 'token-gap' : undefined}>
+              {part.text}
+            </span>
           ),
         )}
       </p>
+      {!ruby && pinyin !== undefined && <Pinyin text={pinyin} />}
       {!words && !failed && !chips && <p className="fine">Разбираю по словам…</p>}
       {current && <GlossCard key={`${text}|${open}`} word={current} onSpeak={onSpeak} />}
     </div>
