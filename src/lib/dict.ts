@@ -1,6 +1,6 @@
 import type { DictReply, DictRequest } from './dict.worker'
 
-export type DictHit = { id: number; hanzi: string; pinyin: string; short: string }
+export type DictHit = { id: number; hanzi: string; pinyin: string; short: string; also?: string }
 export type DictEntry = { hanzi: string; pinyin: string; body: string }
 export type DictStatus = { installed: string | null; ready: boolean; count: number }
 export type DictLine = { level: number; text: string; example: boolean }

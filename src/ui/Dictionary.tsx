@@ -172,7 +172,10 @@ export function Dictionary() {
                 <button type="button" className="dict-row" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : key)}>
                   <b className="hanzi">{hit.hanzi}</b>
                   <span>
-                    <Pinyin text={hit.pinyin} />
+                    <span className="dict-py">
+                      <Pinyin text={hit.pinyin.split(', ')[0]} />
+                      {hit.also && <em>читается и {hit.also}</em>}
+                    </span>
                     <small>{hit.short}</small>
                   </span>
                 </button>
@@ -240,7 +243,8 @@ function Article({ hit, onSpeak, onSearch }: { hit: DictHit; onSpeak: (text: str
         const skip = all ? new Set<number>() : hiddenExamples(lines[index])
         return (
           <div key={`${entry.pinyin}-${index}`} className="dict-entry">
-            {entries.length > 1 && <Pinyin text={entry.pinyin} className="dict-reading" />}
+            <Readings pinyin={entry.pinyin} />
+            {entries.length > 1 && !entry.pinyin.includes(',') && <Pinyin text={entry.pinyin} className="dict-reading" />}
             {lines[index].map((line, row) =>
               skip.has(row) ? null : line.example ? (
                 <Example key={row} text={line.text} level={line.level} onSpeak={onSpeak} />
@@ -262,6 +266,31 @@ function Article({ hit, onSpeak, onSearch }: { hit: DictHit; onSpeak: (text: str
     </div>
   )
 }
+
+function Readings({ pinyin }: { pinyin: string }) {
+  const [main, ...rest] = pinyin.split(', ')
+  if (!rest.length) return null
+  return (
+    <div className="dict-readings">
+      <p>
+        <Pinyin text={main} className="dict-reading" /> <small>основное чтение</small>
+      </p>
+      <p>
+        <small>ещё:</small>{' '}
+        {rest.map((reading, index) => (
+          <span key={reading}>
+            {index > 0 && ' · '}
+            <Pinyin text={reading} />
+          </span>
+        ))}
+      </p>
+      <p className="fine">Какое значение как читается — помечено в начале значения.</p>
+    </div>
+  )
+}
+
+const PINYIN = /^[a-züāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ’' ]+$/i
+const TONED = /[āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]/
 
 function formatVersion(version: string | null) {
   if (!version) return ''
@@ -309,7 +338,18 @@ function Rich({ text, onSearch }: { text: string; onSearch: (text: string) => vo
         }
         if (piece.label) return <small key={index} className="dict-label">{piece.text}</small>
         if (piece.italic) return <em key={index}>{piece.text}</em>
-        if (piece.bold) return <b key={index}>{piece.text}</b>
+        if (piece.bold) {
+          const [, numeral = '', reading = ''] = piece.text.match(/^([IVX]+[,.]?\s+)?(.*)$/) ?? []
+          if (reading && PINYIN.test(reading.trim()) && TONED.test(reading)) {
+            return (
+              <b key={index}>
+                {numeral}
+                <Pinyin text={reading.trim()} className="dict-mark" />
+              </b>
+            )
+          }
+          return <b key={index}>{piece.text}</b>
+        }
         return <span key={index}>{piece.text}</span>
       })}
     </>

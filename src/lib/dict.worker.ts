@@ -2,7 +2,7 @@
 import { openDB, type IDBPDatabase } from 'idb'
 
 type Manifest = { version: string; count: number; bytes: number; files: { index: string; bodies: string } }
-type Hit = { id: number; hanzi: string; pinyin: string; short: string }
+type Hit = { id: number; hanzi: string; pinyin: string; short: string; also?: string }
 export type DictRequest =
   | { type: 'status' }
   | { type: 'install' }
@@ -36,6 +36,7 @@ let pyOrder = new Uint8Array(0)
 let ruTokens: string[] = []
 let ruStart = new Int32Array(0)
 let ruPacked = new Int32Array(0)
+const matchedAlso = new Map<number, string>()
 
 const post = (message: DictReply) => self.postMessage(message)
 const bare = (text: string) => [...text].map((ch) => BARE[ch] || ch).join('')
@@ -202,13 +203,20 @@ function searchPinyin(query: string) {
         .replace(/[0-5]/g, '')
     : ''
   const scores = new Map<number, number>()
+  const orders = new Map<number, number>()
   for (let index = lowerBound(pyKeys, key); index < pyKeys.length; index += 1) {
     const rowKey = pyKeys[index]
     if (!rowKey.startsWith(key)) break
     if (tone && !tonesFit(tone, pyReadings[index])) continue
     const id = pyIds[index]
     const score = weight[id] + (rowKey === key ? 6 : 0) - (rowKey.length - key.length) * 0.08 - (pyOrder[index] ? 1.5 : 0)
-    if ((scores.get(id) ?? -Infinity) < score) scores.set(id, score)
+    if ((scores.get(id) ?? -Infinity) < score) {
+      scores.set(id, score)
+      orders.set(id, pyOrder[index])
+    }
+  }
+  for (const [id, order] of orders) {
+    if (order) matchedAlso.set(id, pinyin[id].split(', ')[order])
   }
   return [...scores].sort((a, b) => b[1] - a[1]).map(([id]) => id)
 }
@@ -271,6 +279,7 @@ function searchRussian(query: string) {
 function search(raw: string): Hit[] {
   const query = raw.trim().slice(0, 40)
   if (!query || !hanzi.length) return []
+  matchedAlso.clear()
   const ids = /\p{Script=Han}/u.test(query) ? searchHanzi(query) : /\p{Script=Cyrillic}/u.test(query) ? searchRussian(query) : searchPinyin(query)
   const seen = new Set<string>()
   const results: Hit[] = []
@@ -278,7 +287,7 @@ function search(raw: string): Hit[] {
     const key = `${hanzi[id]}|${pinyin[id]}`
     if (seen.has(key)) continue
     seen.add(key)
-    results.push({ id, hanzi: hanzi[id], pinyin: pinyin[id], short: short[id] })
+    results.push({ id, hanzi: hanzi[id], pinyin: pinyin[id], short: short[id], also: matchedAlso.get(id) })
     if (results.length >= 50) break
   }
   return results

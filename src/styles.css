@@ -948,6 +948,12 @@ h2 { font-size: 1.05rem; letter-spacing: -0.03em; }
 .dict-head { display: flex; align-items: center; gap: 10px; }
 .dict-head .primary { padding: 10px 16px; }
 .dict-entry { display: grid; gap: 4px; padding-top: 8px; border-top: 1px solid var(--line); }
+.dict-py { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+.dict-py em { font-style: normal; font-size: 0.74rem; color: var(--muted); }
+.dict-readings { display: grid; gap: 2px; padding: 10px 12px; margin-bottom: 6px; border-radius: 14px; border: 1px dashed var(--line); }
+.dict-readings p { margin: 0; }
+.dict-readings small { color: var(--muted); }
+.dict-mark { font-weight: 700; }
 .dict-reading { font-size: 1.05rem; font-weight: 600; }
 .dict-line { margin: 0; line-height: 1.5; }
 .dict-line.l2 { padding-left: 12px; }
