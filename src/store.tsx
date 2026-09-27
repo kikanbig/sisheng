@@ -40,6 +40,8 @@ type Snapshot = {
   newSeen: Record<string, number>
 }
 
+export type PracticeWord = { hanzi: string; pinyin?: string; ru?: string }
+
 type Store = {
   ready: boolean
   error: string
@@ -51,6 +53,9 @@ type Store = {
   newSeen: Record<string, number>
   tab: 'today' | 'lists' | 'dict' | 'progress'
   session: Session | null
+  practice: PracticeWord | null
+  openPractice: (word: PracticeWord) => void
+  closePractice: () => void
   setTab: (tab: Store['tab']) => void
   updateSettings: (patch: Partial<Settings>) => void
   countsFor: (mode: Mode) => { due: number; fresh: number }
@@ -133,6 +138,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [newSeen, setNewSeen] = useState<Record<string, number>>({})
   const [tab, setTab] = useState<Store['tab']>('today')
   const [session, setSession] = useState<Session | null>(null)
+  const [practice, setPractice] = useState<PracticeWord | null>(null)
 
   useEffect(() => {
     loadAll()
@@ -293,6 +299,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     newSeen,
     tab,
     session,
+    practice,
+    openPractice: setPractice,
+    closePractice: () => setPractice(null),
     setTab,
     updateSettings,
     countsFor,

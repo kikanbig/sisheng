@@ -17,7 +17,7 @@ import {
 import { useStore } from '../store'
 import { Speaker } from './Lists'
 import { Pinyin } from './Pinyin'
-import { Strokes } from './Strokes'
+import { DrawButton, Strokes } from './Strokes'
 
 const LIST_NAME = 'Из словаря'
 const TRIES = ['shangke', 'hao3', 'учитель', 'пить чай', '上']
@@ -231,6 +231,7 @@ function Article({ hit, onSpeak, onSearch }: { hit: DictHit; onSpeak: (text: str
         <button type="button" className="hear" aria-label={`Слушать ${hit.hanzi}`} onClick={() => onSpeak(hit.hanzi)}>
           <Speaker />
         </button>
+        <DrawButton hanzi={hit.hanzi} pinyin={hit.pinyin} ru={cardMeaning(hit.short)} />
         {saved ? (
           <span className="fine">Уже в «{savedList?.name ?? 'списке'}»</span>
         ) : (
@@ -264,7 +265,7 @@ function Article({ hit, onSpeak, onSearch }: { hit: DictHit; onSpeak: (text: str
           {all ? 'Свернуть примеры' : `Все примеры · ещё ${hidden}`}
         </button>
       )}
-      <Strokes hanzi={hit.hanzi} />
+      <Strokes hanzi={hit.hanzi} pinyin={hit.pinyin} ru={cardMeaning(hit.short)} />
     </div>
   )
 }

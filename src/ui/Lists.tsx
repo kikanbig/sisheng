@@ -6,7 +6,7 @@ import type { Word } from '../types'
 import { AiPanel } from './AiPanel'
 import { Phrase } from './Phrase'
 import { Pinyin } from './Pinyin'
-import { Strokes } from './Strokes'
+import { DrawButton, Strokes } from './Strokes'
 
 export function Lists() {
   const store = useStore()
@@ -207,6 +207,7 @@ export function Lists() {
                 <span>{word.ru}</span>
               </button>
               <span className="word-actions">
+                <DrawButton hanzi={word.hanzi} pinyin={word.pinyin} ru={word.ru} />
                 <button type="button" className="hear" aria-label={`Слушать ${word.hanzi}`} onClick={() => hear(word.hanzi)}>
                   <Speaker />
                 </button>
@@ -233,7 +234,7 @@ export function Lists() {
                     </div>
                   )}
                   <AiPanel word={word} onSpeak={hear} />
-                  <Strokes hanzi={word.hanzi} />
+                  <Strokes hanzi={word.hanzi} pinyin={word.pinyin} ru={word.ru} />
                 </div>
               )}
             </li>

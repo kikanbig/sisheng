@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
+import { useStore } from '../store'
 
-function paintColor(variable: string, fallback: string) {
+/** Толщина пера в единицах иероглифа (поле 1024): 48 — около 12 px на поле 280 px. */
+export const DRAWING_WIDTH = 48
+
+export function paintColor(variable: string, fallback: string) {
   const probe = document.createElement('span')
   probe.style.color = `var(${variable})`
   document.body.appendChild(probe)
@@ -21,7 +25,8 @@ type StrokeWriter = {
   pauseAnimation: () => Promise<unknown>
 }
 
-export function Strokes({ hanzi }: { hanzi: string }) {
+export function Strokes({ hanzi, pinyin, ru }: { hanzi: string; pinyin?: string; ru?: string }) {
+  const store = useStore()
   const chars = [...hanzi].filter((char) => /\p{Script=Han}/u.test(char)).slice(0, 4)
   const host = useRef<HTMLDivElement>(null)
   const writers = useRef<StrokeWriter[]>([])
@@ -104,7 +109,36 @@ export function Strokes({ hanzi }: { hanzi: string }) {
           </div>
         ))}
       </div>
+      <button type="button" className="ghost draw-btn" onClick={() => store.openPractice({ hanzi, pinyin, ru })}>
+        <BrushIcon />
+        Прописать самому
+      </button>
     </div>
+  )
+}
+
+export function DrawButton({ hanzi, pinyin, ru }: { hanzi: string; pinyin?: string; ru?: string }) {
+  const store = useStore()
+  if (!/\p{Script=Han}/u.test(hanzi)) return null
+  return (
+    <button type="button" className="hear" aria-label={`Прописать ${hanzi}`} onClick={() => store.openPractice({ hanzi, pinyin, ru })}>
+      <BrushIcon />
+    </button>
+  )
+}
+
+export function BrushIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M19.5 3.5c-3 1.6-7.4 5.7-9.6 8.6l1.9 1.9c2.9-2.2 7-6.6 8.6-9.6z" fill="currentColor" />
+      <path
+        d="M9.2 13c-2.3.2-3.6 1.8-3.8 3.9-.1 1.3-.8 2.2-1.9 2.6 3.5 1.2 7.4-.1 7.6-4.6z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+    </svg>
   )
 }
 
@@ -168,7 +202,7 @@ export function StrokeQuiz({
           outlineColor: line,
           highlightColor: accent,
           drawingColor: ink,
-          drawingWidth: 22,
+          drawingWidth: DRAWING_WIDTH,
           strokeWidth: 2,
           outlineWidth: 2,
         })

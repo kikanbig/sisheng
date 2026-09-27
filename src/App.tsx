@@ -5,6 +5,7 @@ import { Today } from './ui/Today'
 import { Lists } from './ui/Lists'
 import { Dictionary } from './ui/Dictionary'
 import { Progress } from './ui/Progress'
+import { PracticeHost } from './ui/Practice'
 import { useStore } from './store'
 
 const TABS = [
@@ -40,8 +41,16 @@ export function App() {
     )
   }
 
-  if (store.session) return <Session />
+  return (
+    <>
+      {store.session ? <Session /> : <Shell />}
+      <PracticeHost />
+    </>
+  )
+}
 
+function Shell() {
+  const store = useStore()
   return (
     <div className="app">
       <header className="topbar">

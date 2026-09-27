@@ -4,6 +4,8 @@ declare module 'hanzi-writer' {
     animateStroke: (strokeNum: number) => Promise<unknown>
     showCharacter: (options?: { duration?: number }) => Promise<unknown>
     showOutline: (options?: { duration?: number }) => Promise<void>
+    hideOutline: (options?: { duration?: number }) => Promise<void>
+    hideCharacter: (options?: { duration?: number }) => Promise<unknown>
     pauseAnimation: () => Promise<unknown>
     getCharacterData: () => Promise<{ strokes: { isInRadical: boolean }[] }>
     quiz: (options?: Record<string, unknown>) => void

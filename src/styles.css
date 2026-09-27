@@ -1193,6 +1193,54 @@ input:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 4px co
   .week { gap: 7px; padding: 10px 12px; }
   .streak { font-size: 0.74rem; }
 }
+.draw-btn { display: inline-flex; align-items: center; gap: 8px; margin-top: 4px; padding: 9px 16px; border-radius: 999px; font-weight: 600; }
+.draw-btn svg { width: 17px; height: 17px; color: var(--cinnabar); }
+.practice {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: color-mix(in srgb, var(--paper) 72%, transparent);
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  animation: practice-in 0.32s var(--ease-out);
+}
+:root.dark .practice { background: rgba(7, 9, 19, 0.82); }
+@keyframes practice-in { from { opacity: 0; transform: translateY(24px); } }
+.practice-sheet {
+  width: min(480px, 100%);
+  min-height: 100%;
+  margin: 0 auto;
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  gap: 12px;
+  padding: calc(env(safe-area-inset-top) + 12px) 18px calc(var(--safe-b) + 24px);
+}
+.practice-top { width: 100%; display: flex; align-items: center; justify-content: space-between; }
+.practice-close {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--glass);
+  font-weight: 650;
+}
+.practice-close svg { width: 18px; height: 18px; }
+.practice-word { display: grid; justify-items: center; gap: 2px; text-align: center; }
+.practice-word .hanzi { font-size: 2.4rem; line-height: 1.15; }
+.practice-word small { color: var(--muted); max-width: 32ch; }
+.practice-chars { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.practice-chars .chip { min-width: 0; padding: 6px 14px; position: relative; }
+.practice-chars .chip .hanzi { font-size: 1.5rem; line-height: 1.2; }
+.practice-chars .chip.done::after { content: "✓"; position: absolute; top: -6px; right: -4px; font-size: 0.75rem; color: var(--t3); }
+.practice-pad { width: min(360px, 100%, 50vh); }
+.practice-note { min-height: 1.3em; text-align: center; }
+.practice-tools { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.practice-actions { width: min(360px, 100%); display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; }
 }
