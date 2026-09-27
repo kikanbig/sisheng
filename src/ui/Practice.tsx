@@ -172,7 +172,7 @@ function Practice({ word, onClose }: { word: PracticeWord; onClose: () => void }
               <button
                 key={`${item}-${at}`}
                 type="button"
-                className={`chip${at === index ? ' on' : ''}${solved.includes(at) ? ' done' : ''}`}
+                className={`chip${at === index ? ' on' : ''}${solved.includes(at) ? ' solved' : ''}`}
                 onClick={() => pick(at)}
               >
                 <span className="hanzi">{item}</span>
