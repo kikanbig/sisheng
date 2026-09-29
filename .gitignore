@@ -8,3 +8,4 @@ dist
 .cache
 dev-dist
 coverage
+*.pdf

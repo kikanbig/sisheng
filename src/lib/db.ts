@@ -19,7 +19,7 @@ export const defaultSettings = (): Settings => ({
   newPerDay: 8,
   dailyGoal: 30,
   theme: 'paper',
-  studyLists: ['lesson1', 'hsk1'],
+  studyLists: ['lesson1', 'lesson2', 'hsk1'],
   onboardingDone: false,
 })
 
@@ -37,12 +37,12 @@ async function init(): Promise<IDBPDatabase<Schema>> {
   })
   const extra = await import('../data/hsk-extra.ts')
   const tx = db.transaction(['words', 'lists', 'kv'], 'readwrite')
-  let lesson1Fresh = false
+  const freshLessons: string[] = []
   const lists = tx.objectStore('lists')
   for (const list of [...builtinLists, ...extra.extraLists]) {
     if (!(await lists.get(list.id))) {
       await lists.put(list)
-      if (list.id === 'lesson1') lesson1Fresh = true
+      if (list.id === 'lesson1' || list.id === 'lesson2') freshLessons.push(list.id)
     }
   }
   const words = tx.objectStore('words')
@@ -55,10 +55,11 @@ async function init(): Promise<IDBPDatabase<Schema>> {
     await Promise.all(incoming.map((word) => words.put(word)))
     await tx.objectStore('kv').put('hsk6-v1', 'seed')
   }
-  if (lesson1Fresh) {
+  if (freshLessons.length) {
     const saved = (await tx.objectStore('kv').get('settings')) as Settings | undefined
-    if (saved && !saved.studyLists.includes('lesson1')) {
-      await tx.objectStore('kv').put({ ...saved, studyLists: ['lesson1', ...saved.studyLists] }, 'settings')
+    const missing = freshLessons.filter((id) => !saved?.studyLists.includes(id))
+    if (saved && missing.length) {
+      await tx.objectStore('kv').put({ ...saved, studyLists: [...missing, ...saved.studyLists] }, 'settings')
     }
   }
   await tx.done

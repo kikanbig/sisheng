@@ -5,12 +5,15 @@ import { freshCard, reviewCard } from '../src/lib/srs.ts'
 
 const hsk = builtinWords.filter((word) => word.listId === 'hsk1')
 const lesson = builtinWords.filter((word) => word.listId === 'lesson1')
+const lesson2 = builtinWords.filter((word) => word.listId === 'lesson2')
 const tones = builtinWords.filter((word) => word.kind === 'tone')
 const ids = new Set(builtinWords.map((word) => word.id))
 
 if (hsk.length !== 150) throw new Error(`HSK1 ${hsk.length}, expected 150`)
 if (lesson.length < 180) throw new Error(`lesson1 ${lesson.length}`)
 if (!lesson[0]?.hanzi.startsWith('你好')) throw new Error('lesson order')
+if (lesson2.length !== lesson.length) throw new Error(`lesson2 ${lesson2.length}, expected ${lesson.length}`)
+if (lesson2.filter((word) => word.pos === 'фраза').length !== 36) throw new Error('lesson2 phrases')
 if (ids.size !== builtinWords.length) throw new Error('duplicate ids')
 if (tones.length < 40) throw new Error('tone deck too small')
 
@@ -67,4 +70,4 @@ for (const [hanzi, pinyin, ru] of hskRows) {
   }
 }
 
-console.log(`ok hsk=${hsk.length} lesson=${lesson.length} tones=${tones.length} hsk2to6=${hskRows.length}`)
+console.log(`ok hsk=${hsk.length} lesson=${lesson.length} lesson2=${lesson2.length} tones=${tones.length} hsk2to6=${hskRows.length}`)

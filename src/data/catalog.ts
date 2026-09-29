@@ -1,5 +1,6 @@
 import type { Choice, Word } from '../types'
 import { lesson1Words } from './lesson1.ts'
+import { lesson2Words } from './lesson2.ts'
 
 function vocab(line: string): Word {
   const [hanzi, pinyin, ru, pos, exH, exP, exR, note] = line.split('|')
@@ -185,6 +186,7 @@ function quartet(key: string, items: [string, string, string][]): Word[] {
 
 export const builtinWords: Word[] = [
   ...lesson1Words,
+  ...lesson2Words,
   ...HSK1.split('\n').filter(Boolean).map(vocab),
   ...quartet('ma', [['妈', 'mā', 'мама'], ['麻', 'má', 'онемение'], ['马', 'mǎ', 'лошадь'], ['骂', 'mà', 'ругать']]),
   ...quartet('ba', [['八', 'bā', 'восемь'], ['拔', 'bá', 'выдёргивать'], ['把', 'bǎ', 'держать'], ['爸', 'bà', 'папа']]),
@@ -206,6 +208,13 @@ export const builtinLists = [
     id: 'lesson1',
     name: 'Урок 1',
     description: 'Фразы занятия и слова к ним',
+    builtin: true,
+    createdAt: 0,
+  },
+  {
+    id: 'lesson2',
+    name: 'Урок 2 · стр. 25–62',
+    description: '185 слов и диалоговых фраз из учебника',
     builtin: true,
     createdAt: 0,
   },
