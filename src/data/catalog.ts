@@ -214,7 +214,7 @@ export const builtinLists = [
   {
     id: 'lesson2',
     name: 'Урок 2 · стр. 25–62',
-    description: '185 слов и диалоговых фраз из учебника',
+    description: 'Слова и диалоговые фразы из учебника',
     builtin: true,
     createdAt: 0,
   },

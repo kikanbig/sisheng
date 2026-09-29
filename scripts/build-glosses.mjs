@@ -254,6 +254,7 @@ function write(data) {
 loadEnv()
 const dictionary = dictionaryEntries()
 const lesson = sourceRows('src/data/lesson1.ts', 'LINES')
+const lesson2 = sourceRows('src/data/lesson2.ts', 'LINES')
 const hsk1 = sourceRows('src/data/catalog.ts', 'HSK1')
 const extra = JSON.parse(fs.readFileSync(path.join(root, 'src', 'data', 'hsk-levels.json'), 'utf8'))
 const result = new Map()
@@ -268,7 +269,7 @@ const addLexical = (hanzi, pinyin, ru, note) => {
   else addContext(hanzi, pinyin, ru)
 }
 
-for (const row of lesson) {
+for (const row of [...lesson, ...lesson2]) {
   const [hanzi, pinyin, ru, pos, exH, exP, exR, note] = row
   if (pos === 'фраза') addContext(hanzi, pinyin, ru)
   else addLexical(hanzi, pinyin, ru, note)
@@ -298,15 +299,27 @@ console.log(`${result.size} слов собраны локально; модел
 while (missing.length) {
   const wave = []
   for (let i = 0; i < PARALLEL && missing.length; i += 1) wave.push(missing.splice(0, BATCH))
-  const replies = await Promise.all(wave.map((items) => ask(items)))
+  const replies = await Promise.all(
+    wave.map(async (items) => {
+      try {
+        return await ask(items)
+      } catch {
+        return new Map()
+      }
+    }),
+  )
   for (const reply of replies) for (const [text, words] of reply) result.set(text, words)
   write(result)
   const unresolved = wave.flat().filter((item) => !result.has(item.text))
   if (unresolved.length) {
     console.log(`Повторяю по одной: ${unresolved.length}`)
     for (const item of unresolved) {
-      const reply = await ask([item])
-      if (reply.has(item.text)) result.set(item.text, reply.get(item.text))
+      try {
+        const reply = await ask([item])
+        if (reply.has(item.text)) result.set(item.text, reply.get(item.text))
+      } catch {
+        console.error(`Сохраняю локальный разбор: ${item.text}`)
+      }
     }
     write(result)
   }

@@ -12,8 +12,8 @@ const ids = new Set(builtinWords.map((word) => word.id))
 if (hsk.length !== 150) throw new Error(`HSK1 ${hsk.length}, expected 150`)
 if (lesson.length < 180) throw new Error(`lesson1 ${lesson.length}`)
 if (!lesson[0]?.hanzi.startsWith('你好')) throw new Error('lesson order')
-if (lesson2.length !== lesson.length) throw new Error(`lesson2 ${lesson2.length}, expected ${lesson.length}`)
-if (lesson2.filter((word) => word.pos === 'фраза').length !== 36) throw new Error('lesson2 phrases')
+if (lesson2.length !== 445) throw new Error(`lesson2 ${lesson2.length}, expected 445`)
+if (lesson2.filter((word) => word.pos === 'фраза').length !== 149) throw new Error('lesson2 phrases')
 if (ids.size !== builtinWords.length) throw new Error('duplicate ids')
 if (tones.length < 40) throw new Error('tone deck too small')
 
@@ -26,7 +26,7 @@ for (const word of builtinWords) {
   if (word.kind === 'vocab' && !word.example?.hanzi) throw new Error(`example ${word.id}`)
   if (word.example?.pinyin) {
     for (const syllable of word.example.pinyin.replace(/[!.?！？。,，]/g, '').split(/\s+/).filter(Boolean)) {
-      if (!/[a-zA-Zü]/.test(syllable)) throw new Error(`example py ${word.id} ${syllable}`)
+      if (!/\p{Script=Latin}/u.test(syllable)) throw new Error(`example py ${word.id} ${syllable}`)
     }
   }
 }

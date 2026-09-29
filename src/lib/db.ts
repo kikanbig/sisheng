@@ -36,14 +36,13 @@ async function init(): Promise<IDBPDatabase<Schema>> {
     },
   })
   const extra = await import('../data/hsk-extra.ts')
-  const tx = db.transaction(['words', 'lists', 'kv'], 'readwrite')
+  const tx = db.transaction(['words', 'lists', 'srs', 'kv'], 'readwrite')
   const freshLessons: string[] = []
   const lists = tx.objectStore('lists')
   for (const list of [...builtinLists, ...extra.extraLists]) {
-    if (!(await lists.get(list.id))) {
-      await lists.put(list)
-      if (list.id === 'lesson1' || list.id === 'lesson2') freshLessons.push(list.id)
-    }
+    const existing = await lists.get(list.id)
+    if (!existing && (list.id === 'lesson1' || list.id === 'lesson2')) freshLessons.push(list.id)
+    await lists.put(list)
   }
   const words = tx.objectStore('words')
   for (const word of builtinWords) {
@@ -54,6 +53,14 @@ async function init(): Promise<IDBPDatabase<Schema>> {
     const incoming = extra.extraWords()
     await Promise.all(incoming.map((word) => words.put(word)))
     await tx.objectStore('kv').put('hsk6-v1', 'seed')
+  }
+  const lesson2Seed = await tx.objectStore('kv').get('lesson2Seed')
+  if (lesson2Seed !== 'printed-25-62-v1') {
+    await Promise.all(builtinWords.filter((word) => word.listId === 'lesson2').map((word) => words.put(word)))
+    const srs = tx.objectStore('srs')
+    const oldCards = (await srs.getAll()).filter((card) => card.wordId.startsWith('l2:'))
+    await Promise.all(oldCards.map((card) => srs.delete(card.id)))
+    await tx.objectStore('kv').put('printed-25-62-v1', 'lesson2Seed')
   }
   if (freshLessons.length) {
     const saved = (await tx.objectStore('kv').get('settings')) as Settings | undefined
