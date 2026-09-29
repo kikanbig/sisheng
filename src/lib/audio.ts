@@ -60,19 +60,27 @@ function silentUrl() {
 export function unlockAudio() {
   const audio = element()
   if (!audio.paused) return
+  // Safari на iPhone разрешает отложенное воспроизведение только пока тот же
+  // audio-элемент уже запущен касанием. Держим тишину по кругу, пока TTS
+  // загружается; playUrl ниже заменит её настоящей записью.
+  audio.loop = true
   audio.src = silentUrl()
   void audio.play().catch(() => undefined)
 }
 
 export function stopSpeech() {
   ticket += 1
-  player?.pause()
+  if (player) {
+    player.loop = false
+    player.pause()
+  }
   if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel()
 }
 
 function playUrl(url: string, mine: number): Promise<boolean> {
   if (mine !== ticket) return Promise.resolve(false)
   const audio = element()
+  audio.loop = false
   audio.src = url
   try {
     audio.currentTime = 0
