@@ -1,14 +1,18 @@
 import { normalizePinyin } from './pinyin'
+import builtinGlosses from '../data/glosses.json'
 
 export type GlossChar = { hanzi: string; pinyin: string; ru: string }
 export type GlossWord = { hanzi: string; pinyin: string; ru: string; note: string; chars: GlossChar[] }
 export type GlossPart = { text: string; word?: GlossWord }
 
+const builtin = builtinGlosses as Record<string, GlossWord[]>
 const memory = new Map<string, GlossWord[]>()
 const pending = new Map<string, Promise<GlossWord[]>>()
 const storeKey = (text: string) => `gloss:v2:${text}`
 
 export function cachedGloss(text: string) {
+  const ready = builtin[text]
+  if (ready) return ready
   const hit = memory.get(text)
   if (hit) return hit
   try {
