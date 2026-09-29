@@ -108,7 +108,7 @@ export function Phrase({
           ),
         )}
       </p>
-      {!ruby && pinyin !== undefined && <Pinyin text={pinyin} />}
+      {!ruby && pinyin !== undefined && <Pinyin text={pinyin} onSpeak={() => onSpeak(text)} />}
       {!words && !failed && !chips && <p className="fine">Разбираю по словам…</p>}
       {current && <GlossCard key={`${text}|${open}`} word={current} onSpeak={onSpeak} />}
     </div>
@@ -163,7 +163,7 @@ function GlossCard({ word, onSpeak }: { word: GlossWord; onSpeak: (text: string)
     <div className="gloss">
       <div className="gloss-head">
         <b className="hanzi">{word.hanzi}</b>
-        <Pinyin text={word.pinyin} />
+        <Pinyin text={word.pinyin} onSpeak={() => onSpeak(word.hanzi)} />
         <span>{word.ru}</span>
       </div>
       {word.note && <p className="gloss-note">{word.note}</p>}

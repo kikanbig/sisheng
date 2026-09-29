@@ -575,7 +575,7 @@ function Answer({
           <Phrase text={word.hanzi} onSpeak={onSpeak} chips />
         </>
       )}
-      <Pinyin text={word.pinyin} className="pinyin-lg" />
+      <Pinyin text={word.pinyin} className="pinyin-lg" onSpeak={onPlay} />
       <p className="meaning">
         {word.pos && <span className="pos">{word.pos}</span>}
         {word.ru}

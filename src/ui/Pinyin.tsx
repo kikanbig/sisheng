@@ -1,9 +1,9 @@
 import { syllables, toneOf } from '../lib/pinyin'
 
-export function Pinyin({ text, className = '' }: { text: string; className?: string }) {
+export function Pinyin({ text, className = '', onSpeak }: { text: string; className?: string; onSpeak?: () => void }) {
   const parts = text.split(/(\s+)/)
-  return (
-    <span className={`pinyin ${className}`.trim()}>
+  const content = (
+    <>
       {parts.map((part, index) =>
         /\s/.test(part) ? (
           <span key={index}>{part}</span>
@@ -13,8 +13,16 @@ export function Pinyin({ text, className = '' }: { text: string; className?: str
           </span>
         ),
       )}
-    </span>
+    </>
   )
+  if (onSpeak) {
+    return (
+      <button type="button" className={`pinyin pinyin-speak ${className}`.trim()} aria-label={`Слушать: ${text}`} onClick={onSpeak}>
+        {content}
+      </button>
+    )
+  }
+  return <span className={`pinyin ${className}`.trim()}>{content}</span>
 }
 
 export function toneName(tone: number) {

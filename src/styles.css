@@ -668,6 +668,14 @@ h2 { font-size: 1.05rem; letter-spacing: -0.03em; }
 .bare { border: 0; background: transparent; padding: 0; overflow: visible; }
 .meaning-xl { font-size: clamp(2rem, 6vw, 3rem); letter-spacing: -0.04em; text-align: center; }
 .pinyin { font-family: var(--pin); font-style: italic; font-weight: 600; }
+.pinyin-speak {
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  padding: 2px 7px;
+  cursor: pointer;
+}
+.pinyin-speak:active { background: color-mix(in srgb, var(--gold) 14%, transparent); transform: scale(0.97); }
 .pinyin-lg { font-size: 1.55rem; }
 .tone-1 { color: var(--t1); }
 .tone-2 { color: var(--t2); }
