@@ -34,8 +34,7 @@ export function Session() {
   const undoTimer = useRef(0)
   const drag = useRef<{ x: number; y: number; id: number; active: boolean; example: boolean } | null>(null)
   const dxRef = useRef(0)
-  const swiped = useRef(false)
-  const swallowClick = useRef(false)
+  const blockedClick = useRef<{ id: number; at: number } | null>(null)
   const swipeAt = useRef(0)
   const voiced = useRef(-1)
   const misses = useRef(0)
@@ -233,13 +232,11 @@ export function Session() {
     setDx(0)
     if (Math.abs(moved) > 88) navigator.vibrate?.(8)
     if (moved > 88) {
-      swiped.current = true
       if (cardItem.teach) alreadyKnow()
       else commit('good')
       return
     }
     if (moved < -88) {
-      swiped.current = true
       if (cardItem.teach) learnLater()
       else commit('again')
     }
@@ -276,9 +273,10 @@ export function Session() {
     const state = drag.current
     if (!state || event.pointerId !== state.id) return
     const tapped = !state.active
+    if (state.active) blockedClick.current = { id: event.pointerId, at: event.timeStamp }
     settle(state.active ? dxRef.current : 0)
     if (!tapped || state.example || revealed || cardItem.teach || round.mode === 'tones' || round.mode === 'write') return
-    swallowClick.current = true
+    blockedClick.current = { id: event.pointerId, at: event.timeStamp }
     show()
   }
 
@@ -316,7 +314,7 @@ export function Session() {
   }
 
   function onSessionClick(event: React.MouseEvent) {
-    if (swiped.current || revealed || cardItem.teach || round.mode === 'tones' || round.mode === 'write') return
+    if (revealed || cardItem.teach || round.mode === 'tones' || round.mode === 'write') return
     const target = event.target as HTMLElement
     if (target.closest('.session-bar, .speed-row, .undo-toast')) return
     show()
@@ -327,9 +325,12 @@ export function Session() {
       className="session"
       onClick={onSessionClick}
       onClickCapture={(event) => {
-        if (!swiped.current && !swallowClick.current) return
-        swiped.current = false
-        swallowClick.current = false
+        const blocked = blockedClick.current
+        if (!blocked) return
+        blockedClick.current = null
+        const pointerId = 'pointerId' in event.nativeEvent ? Number(event.nativeEvent.pointerId) : 0
+        if (pointerId && pointerId !== blocked.id) return
+        if (event.timeStamp - blocked.at > 500) return
         event.preventDefault()
         event.stopPropagation()
       }}
