@@ -19,7 +19,7 @@ export const defaultSettings = (): Settings => ({
   newPerDay: 8,
   dailyGoal: 30,
   theme: 'paper',
-  studyLists: ['lesson1', 'lesson2', 'hsk1'],
+  studyLists: ['lesson1', 'lesson2', 'lesson3', 'lesson4', 'lesson5', 'lesson6', 'lesson7', 'lesson8', 'lesson9', 'lesson10', 'lesson11', 'hsk1'],
   onboardingDone: false,
 })
 
@@ -41,7 +41,7 @@ async function init(): Promise<IDBPDatabase<Schema>> {
   const lists = tx.objectStore('lists')
   for (const list of [...builtinLists, ...extra.extraLists]) {
     const existing = await lists.get(list.id)
-    if (!existing && (list.id === 'lesson1' || list.id === 'lesson2')) freshLessons.push(list.id)
+    if (!existing && list.id.startsWith('lesson')) freshLessons.push(list.id)
     await lists.put(list)
   }
   const words = tx.objectStore('words')
@@ -54,6 +54,15 @@ async function init(): Promise<IDBPDatabase<Schema>> {
     await Promise.all(incoming.map((word) => words.put(word)))
     await tx.objectStore('kv').put('hsk6-v1', 'seed')
   }
+  const bookSeed = await tx.objectStore('kv').get('bookLessonsSeed')
+  if (bookSeed !== 'printed-63-288-v2') {
+    await Promise.all(
+      builtinWords
+        .filter((word) => /^lesson(?:[3-9]|1[01])$/.test(word.listId))
+        .map((word) => words.put(word)),
+    )
+    await tx.objectStore('kv').put('printed-63-288-v2', 'bookLessonsSeed')
+  }
   const lesson2Seed = await tx.objectStore('kv').get('lesson2Seed')
   if (lesson2Seed !== 'printed-25-62-v1') {
     await Promise.all(builtinWords.filter((word) => word.listId === 'lesson2').map((word) => words.put(word)))
@@ -64,9 +73,11 @@ async function init(): Promise<IDBPDatabase<Schema>> {
   }
   if (freshLessons.length) {
     const saved = (await tx.objectStore('kv').get('settings')) as Settings | undefined
-    const missing = freshLessons.filter((id) => !saved?.studyLists.includes(id))
-    if (saved && missing.length) {
-      await tx.objectStore('kv').put({ ...saved, studyLists: [...missing, ...saved.studyLists] }, 'settings')
+    const lessonIds = builtinLists.filter((list) => list.id.startsWith('lesson')).map((list) => list.id)
+    if (saved) {
+      const lessons = lessonIds.filter((id) => saved.studyLists.includes(id) || freshLessons.includes(id))
+      const rest = saved.studyLists.filter((id) => !lessonIds.includes(id))
+      await tx.objectStore('kv').put({ ...saved, studyLists: [...lessons, ...rest] }, 'settings')
     }
   }
   await tx.done

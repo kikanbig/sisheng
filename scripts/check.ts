@@ -14,6 +14,23 @@ if (lesson.length < 180) throw new Error(`lesson1 ${lesson.length}`)
 if (!lesson[0]?.hanzi.startsWith('你好')) throw new Error('lesson order')
 if (lesson2.length !== 445) throw new Error(`lesson2 ${lesson2.length}, expected 445`)
 if (lesson2.filter((word) => word.pos === 'фраза').length !== 149) throw new Error('lesson2 phrases')
+const bookLessons: [string, number, number][] = [
+  ['lesson3', 90, 30],
+  ['lesson4', 98, 37],
+  ['lesson5', 110, 46],
+  ['lesson6', 105, 42],
+  ['lesson7', 114, 45],
+  ['lesson8', 110, 46],
+  ['lesson9', 110, 42],
+  ['lesson10', 116, 45],
+  ['lesson11', 130, 56],
+]
+for (const [id, total, phrases] of bookLessons) {
+  const rows = builtinWords.filter((word) => word.listId === id)
+  if (rows.length !== total) throw new Error(`${id} ${rows.length}, expected ${total}`)
+  const got = rows.filter((word) => word.pos === 'фраза').length
+  if (got !== phrases) throw new Error(`${id} phrases ${got}, expected ${phrases}`)
+}
 if (ids.size !== builtinWords.length) throw new Error('duplicate ids')
 if (tones.length < 40) throw new Error('tone deck too small')
 
@@ -70,4 +87,5 @@ for (const [hanzi, pinyin, ru] of hskRows) {
   }
 }
 
-console.log(`ok hsk=${hsk.length} lesson=${lesson.length} lesson2=${lesson2.length} tones=${tones.length} hsk2to6=${hskRows.length}`)
+const book = bookLessons.map(([id]) => builtinWords.filter((word) => word.listId === id).length).join('+')
+console.log(`ok hsk=${hsk.length} lesson=${lesson.length} lesson2=${lesson2.length} book=${book} tones=${tones.length} hsk2to6=${hskRows.length}`)

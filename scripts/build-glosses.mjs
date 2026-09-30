@@ -253,8 +253,7 @@ function write(data) {
 
 loadEnv()
 const dictionary = dictionaryEntries()
-const lesson = sourceRows('src/data/lesson1.ts', 'LINES')
-const lesson2 = sourceRows('src/data/lesson2.ts', 'LINES')
+const lesson = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].flatMap((number) => sourceRows(`src/data/lesson${number}.ts`, 'LINES'))
 const hsk1 = sourceRows('src/data/catalog.ts', 'HSK1')
 const extra = JSON.parse(fs.readFileSync(path.join(root, 'src', 'data', 'hsk-levels.json'), 'utf8'))
 const result = new Map()
@@ -269,7 +268,7 @@ const addLexical = (hanzi, pinyin, ru, note) => {
   else addContext(hanzi, pinyin, ru)
 }
 
-for (const row of [...lesson, ...lesson2]) {
+for (const row of lesson) {
   const [hanzi, pinyin, ru, pos, exH, exP, exR, note] = row
   if (pos === 'фраза') addContext(hanzi, pinyin, ru)
   else addLexical(hanzi, pinyin, ru, note)

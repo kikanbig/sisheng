@@ -92,7 +92,7 @@ function budgetLeft(newSeen: Record<string, number>, mode: Mode, perDay: number)
 }
 
 const wordRank = new Map(builtinWords.map((word, index) => [word.id, index]))
-const LIST_RANK = ['lesson1', 'lesson2', 'hsk1', 'hsk2', 'hsk3', 'hsk4', 'hsk5', 'hsk6', 'tones']
+const LIST_RANK = ['lesson1', 'lesson2', 'lesson3', 'lesson4', 'lesson5', 'lesson6', 'lesson7', 'lesson8', 'lesson9', 'lesson10', 'lesson11', 'hsk1', 'hsk2', 'hsk3', 'hsk4', 'hsk5', 'hsk6', 'tones']
 
 function studyRank(id: string) {
   const known = wordRank.get(id)
@@ -292,7 +292,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       newPerDay: 8,
       dailyGoal: 30,
       theme: 'paper',
-      studyLists: ['lesson1', 'lesson2', 'hsk1'],
+      studyLists: ['lesson1', 'lesson2', 'lesson3', 'lesson4', 'lesson5', 'lesson6', 'lesson7', 'lesson8', 'lesson9', 'lesson10', 'lesson11', 'hsk1'],
       onboardingDone: true,
     },
     stats,

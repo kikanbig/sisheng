@@ -1,6 +1,15 @@
 import type { Choice, Word } from '../types'
 import { lesson1Words } from './lesson1.ts'
 import { lesson2Words } from './lesson2.ts'
+import { lesson3Words } from './lesson3.ts'
+import { lesson4Words } from './lesson4.ts'
+import { lesson5Words } from './lesson5.ts'
+import { lesson6Words } from './lesson6.ts'
+import { lesson7Words } from './lesson7.ts'
+import { lesson8Words } from './lesson8.ts'
+import { lesson9Words } from './lesson9.ts'
+import { lesson10Words } from './lesson10.ts'
+import { lesson11Words } from './lesson11.ts'
 
 function vocab(line: string): Word {
   const [hanzi, pinyin, ru, pos, exH, exP, exR, note] = line.split('|')
@@ -187,6 +196,15 @@ function quartet(key: string, items: [string, string, string][]): Word[] {
 export const builtinWords: Word[] = [
   ...lesson1Words,
   ...lesson2Words,
+  ...lesson3Words,
+  ...lesson4Words,
+  ...lesson5Words,
+  ...lesson6Words,
+  ...lesson7Words,
+  ...lesson8Words,
+  ...lesson9Words,
+  ...lesson10Words,
+  ...lesson11Words,
   ...HSK1.split('\n').filter(Boolean).map(vocab),
   ...quartet('ma', [['妈', 'mā', 'мама'], ['麻', 'má', 'онемение'], ['马', 'mǎ', 'лошадь'], ['骂', 'mà', 'ругать']]),
   ...quartet('ba', [['八', 'bā', 'восемь'], ['拔', 'bá', 'выдёргивать'], ['把', 'bǎ', 'держать'], ['爸', 'bà', 'папа']]),
@@ -215,6 +233,69 @@ export const builtinLists = [
     id: 'lesson2',
     name: 'Урок 2 · стр. 25–62',
     description: 'Слова и диалоговые фразы из учебника',
+    builtin: true,
+    createdAt: 0,
+  },
+  {
+    id: 'lesson3',
+    name: 'Урок 3 · стр. 63–87',
+    description: 'Из какой страны вы приехали?',
+    builtin: true,
+    createdAt: 0,
+  },
+  {
+    id: 'lesson4',
+    name: 'Урок 4 · стр. 88–112',
+    description: 'Сколько человек в вашей семье?',
+    builtin: true,
+    createdAt: 0,
+  },
+  {
+    id: 'lesson5',
+    name: 'Урок 5 · стр. 113–137',
+    description: 'Завтра во сколько у вас урок?',
+    builtin: true,
+    createdAt: 0,
+  },
+  {
+    id: 'lesson6',
+    name: 'Урок 6 · стр. 138–161',
+    description: 'С днём рождения!',
+    builtin: true,
+    createdAt: 0,
+  },
+  {
+    id: 'lesson7',
+    name: 'Урок 7 · стр. 162–183',
+    description: 'Библиотека находится к северу от столовой.',
+    builtin: true,
+    createdAt: 0,
+  },
+  {
+    id: 'lesson8',
+    name: 'Урок 8 · стр. 184–207',
+    description: 'Сколько стоит полкило яблок?',
+    builtin: true,
+    createdAt: 0,
+  },
+  {
+    id: 'lesson9',
+    name: 'Урок 9 · стр. 208–233',
+    description: 'Мне очень плохо.',
+    builtin: true,
+    createdAt: 0,
+  },
+  {
+    id: 'lesson10',
+    name: 'Урок 10 · стр. 234–257',
+    description: 'Погода стала прохладнее.',
+    builtin: true,
+    createdAt: 0,
+  },
+  {
+    id: 'lesson11',
+    name: 'Урок 11 · стр. 258–288',
+    description: 'С Рождеством!',
     builtin: true,
     createdAt: 0,
   },
