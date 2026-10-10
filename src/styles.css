@@ -845,6 +845,16 @@ h2 { font-size: 1.05rem; letter-spacing: -0.03em; }
 }
 .ai-actions button.on, .gloss-actions button.on { border-color: var(--select); box-shadow: 0 0 0 1px var(--select); }
 .ai-body { color: var(--muted); display: grid; gap: 6px; }
+.ai-body p, .similar { line-height: 1.75; }
+.zh-inline {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.28em;
+  margin-inline: 0.08em;
+  white-space: nowrap;
+}
+.zh-inline .hanzi { color: var(--ink); font-size: 1.12em; }
+.zh-inline .pinyin { font-size: 0.95em; }
 .senses { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; width: 100%; text-align: left; animation: rise 0.4s var(--ease-out); }
 .senses li {
   display: grid;

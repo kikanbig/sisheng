@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { alignGloss, cachedGloss, loadGloss, type GlossPart, type GlossWord } from '../lib/gloss'
 import { syllables } from '../lib/pinyin'
 import { loadSenses, type Sense } from '../lib/senses'
+import { HanziText } from './HanziText'
 import { Pinyin } from './Pinyin'
 import { SenseList } from './Senses'
 
@@ -195,9 +196,21 @@ function GlossCard({ word, onSpeak }: { word: GlossWord; onSpeak: (text: string)
       {senses && showSenses && <SenseList senses={senses} pinyin={word.pinyin} ru={word.ru} onSpeak={onSpeak} />}
       {more && (
         <div className="ai-body">
-          {more.hook && <p className="hook">{more.hook}</p>}
-          {more.usage && <p>{more.usage}</p>}
-          {more.trap && <p className="trap">{more.trap}</p>}
+          {more.hook && (
+            <p className="hook">
+              <HanziText text={more.hook} known={word} />
+            </p>
+          )}
+          {more.usage && (
+            <p>
+              <HanziText text={more.usage} known={word} />
+            </p>
+          )}
+          {more.trap && (
+            <p className="trap">
+              <HanziText text={more.trap} known={word} />
+            </p>
+          )}
         </div>
       )}
     </div>

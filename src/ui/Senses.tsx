@@ -1,4 +1,5 @@
 import type { Sense } from '../lib/senses'
+import { HanziText } from './HanziText'
 import { Pinyin } from './Pinyin'
 
 const bare = (text: string) => text.toLowerCase().replace(/\s+/g, '')
@@ -35,7 +36,7 @@ export function SenseList({
             </p>
             {sense.example && (
               <button type="button" className="sense-example" disabled={!onSpeak} onClick={() => onSpeak?.(sense.example!.hanzi)}>
-                <span className="hanzi">{sense.example.hanzi}</span>
+                <HanziText text={sense.example.hanzi} known={{ hanzi: sense.example.hanzi, pinyin: sense.example.pinyin }} />
                 <small>{sense.example.ru}</small>
               </button>
             )}

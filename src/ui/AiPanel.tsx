@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { loadSenses, type Sense } from '../lib/senses'
-import { Pinyin } from './Pinyin'
+import { HanziText } from './HanziText'
 import { SenseList } from './Senses'
 import type { Word } from '../types'
 
@@ -69,25 +69,42 @@ export function AiPanel({ word, onSpeak }: { word: Word; onSpeak?: (text: string
       {error && <p className="warn">{error}</p>}
       {data && kind === 'explain' && (
         <div className="ai-body">
-          {typeof data.hook === 'string' && <p className="hook">{data.hook}</p>}
-          {typeof data.usage === 'string' && <p>{data.usage}</p>}
-          {typeof data.trap === 'string' && data.trap && <p className="trap">{data.trap}</p>}
+          {typeof data.hook === 'string' && (
+            <p className="hook">
+              <HanziText text={data.hook} known={word} />
+            </p>
+          )}
+          {typeof data.usage === 'string' && (
+            <p>
+              <HanziText text={data.usage} known={word} />
+            </p>
+          )}
+          {typeof data.trap === 'string' && data.trap && (
+            <p className="trap">
+              <HanziText text={data.trap} known={word} />
+            </p>
+          )}
           {similar.length > 0 && (
             <ul className="similar">
               {similar.map((item, index) => (
                 <li key={index}>
-                  <b className="hanzi">{item.hanzi}</b> <Pinyin text={item.pinyin || ''} /> — {item.ru}
+                  <HanziText text={item.hanzi || ''} known={{ hanzi: item.hanzi || '', pinyin: item.pinyin || '' }} /> — {item.ru}
                 </li>
               ))}
             </ul>
           )}
         </div>
       )}
-      {data && kind === 'mnemonic' && typeof data.story === 'string' && <p className="ai-body">{data.story}</p>}
+      {data && kind === 'mnemonic' && typeof data.story === 'string' && (
+        <p className="ai-body">
+          <HanziText text={data.story} known={word} />
+        </p>
+      )}
       {data && kind === 'example' && example.hanzi && (
         <div className="ai-body example">
-          <p className="hanzi">{example.hanzi}</p>
-          <Pinyin text={example.pinyin || ''} />
+          <p className="hanzi">
+            <HanziText text={example.hanzi} known={{ hanzi: example.hanzi, pinyin: example.pinyin || '' }} />
+          </p>
           <p>{example.ru}</p>
         </div>
       )}
