@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
+import { lessonDrills } from '../data/drills'
 import { workLessons, workTaskLabel, type WorkLesson } from '../data/workbook'
 import { speak, unlockAudio } from '../lib/audio'
 import { useStore } from '../store'
+import { DrillLaunchers, DrillSession } from './Drills'
 import { Pinyin } from './Pinyin'
 import { DRAWING_WIDTH, paintColor } from './Strokes'
+
+type DrillKind = 'tones' | 'picks' | 'choices' | 'builds'
 
 type Writer = {
   animateCharacter: () => Promise<void>
@@ -15,11 +19,16 @@ export function Workbook() {
   const store = useStore()
   const [openId, setOpenId] = useState(workLessons[0].id)
   const [run, setRun] = useState<{ lessonId: string; index: number } | null>(null)
+  const [drill, setDrill] = useState<{ lessonId: string; kind: DrillKind } | null>(null)
   const lesson = workLessons.find((item) => item.id === openId) ?? workLessons[0]
   const running = run ? workLessons.find((item) => item.id === run.lessonId) : null
 
   if (running && run) {
     return <WriteRun lesson={running} start={run.index} onClose={() => setRun(null)} />
+  }
+
+  if (drill) {
+    return <DrillSession lessonId={drill.lessonId} kind={drill.kind} onClose={() => setDrill(null)} />
   }
 
   const doneCopies = workLessons.reduce((sum, item) => sum + copiesOf(item, store.workbook), 0)
@@ -30,8 +39,7 @@ export function Workbook() {
       <p className="eyebrow">тетрадь · стр. 1–104</p>
       <h1>Прописи по рабочей тетради.</h1>
       <p className="fine">
-        Иероглифы идут как в книге. Сколько пустых клеток в строке, столько раз и пишешь: по чертам — 4, по частям — 7.
-        Слова из задания «напишите иероглифы» — один раз.
+        Сначала короткие задания урока: тоны или пиньинь, выбор иероглифа, сборка фразы. Потом прописи. По чертам — 4 раза, по частям — 7, слово из списка — один раз.
       </p>
       <p className="workbook-sum">
         {doneCopies} из {allCopies} прописей
@@ -53,6 +61,14 @@ export function Workbook() {
       <LessonCard
         lesson={lesson}
         progress={store.workbook}
+        onDrill={(kind) => {
+          const pack = lessonDrills[lesson.id]
+          const items = kind === 'tones' ? pack.tones : kind === 'picks' ? pack.picks : kind === 'choices' ? pack.choices : pack.builds
+          if (items.every((item) => (store.workbook[item.id] ?? 0) >= 1)) {
+            for (const item of items) store.markWorkbook(item.id, 0)
+          }
+          setDrill({ lessonId: lesson.id, kind })
+        }}
         onStart={() => {
           const index = lesson.items.findIndex((item) => (store.workbook[item.id] ?? 0) < item.times)
           if (index < 0) {
@@ -71,10 +87,12 @@ function LessonCard({
   lesson,
   progress,
   onStart,
+  onDrill,
 }: {
   lesson: WorkLesson
   progress: Record<string, number>
   onStart: () => void
+  onDrill: (kind: DrillKind) => void
 }) {
   const done = copiesOf(lesson, progress)
   const all = totalCopies(lesson)
@@ -87,6 +105,7 @@ function LessonCard({
         </h2>
         <p>{lesson.title}</p>
       </div>
+      <DrillLaunchers lessonId={lesson.id} progress={progress} onStart={onDrill} />
       <button type="button" className="primary" onClick={onStart}>
         {done === 0 ? 'Начать прописи' : done >= all ? 'Пройти ещё раз' : 'Продолжить'}
       </button>

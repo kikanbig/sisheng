@@ -1123,6 +1123,36 @@ input:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 4px co
 .workbook-count { margin-left: auto; font-variant-numeric: tabular-nums; font-size: 0.78rem; color: var(--muted); }
 .workbook-meta { margin: 0; text-align: center; color: var(--muted); font-size: 0.85rem; }
 .workbook-now { color: var(--cinnabar); }
+.drill-launch { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.drill-launch-btn { display: grid; gap: 2px; justify-items: center; min-width: 0; padding: 10px 4px; }
+.drill-launch-btn b { font-size: clamp(0.72rem, 3.5vw, 0.95rem); font-weight: 650; line-height: 1.15; }
+.drill-launch-btn small { color: var(--muted); font-variant-numeric: tabular-nums; }
+.drill-hanzi { margin: 0; text-align: center; font-size: 2.4rem; }
+.drill-sentence { margin: 0; text-align: center; font-size: 1.6rem; line-height: 1.5; }
+.drill-blank {
+  display: inline-block;
+  min-width: 1.4em;
+  margin: 0 0.15em;
+  border-bottom: 2px solid var(--cinnabar);
+  color: var(--cinnabar);
+}
+.drill-options, .tone-keys, .build-bank, .build-line { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.build-line { min-height: 52px; padding: 8px; border-radius: 16px; background: color-mix(in srgb, var(--sand-2) 70%, transparent); }
+.tone-slots { display: flex; gap: 10px; justify-content: center; }
+.tone-slot {
+  min-width: 72px;
+  border: 1px solid var(--line);
+  background: transparent;
+  border-radius: 16px;
+  padding: 10px 8px;
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+}
+.tone-slot.on { border-color: var(--cinnabar); }
+.tone-slot small { min-height: 1em; color: var(--cinnabar); font-size: 1rem; }
+.ghost.wrong { border-color: var(--t1); color: var(--t1); }
+.ghost:disabled { opacity: 0.45; }
 .hear {
   width: 36px;
   height: 36px;
