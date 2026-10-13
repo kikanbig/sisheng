@@ -10,10 +10,12 @@ import {
   resetProgress,
   saveCard,
   saveList,
+  saveFavorites,
   saveNewSeen,
   saveSettings,
   saveStats,
   saveWord,
+  saveWorkbook,
 } from './lib/db'
 import { buildQueue, cardId, freshCard, reviewCard, todayKey, yesterdayKey, type QueueItem } from './lib/srs'
 import type { BackupFile, DayStats, Grade, Mode, Settings, Speed, SrsCard, Word, WordList } from './types'
@@ -51,7 +53,9 @@ type Store = {
   settings: Settings
   stats: Stats
   newSeen: Record<string, number>
-  tab: 'today' | 'lists' | 'dict' | 'progress'
+  favorites: string[]
+  workbook: Record<string, number>
+  tab: 'today' | 'lists' | 'dict' | 'workbook' | 'progress'
   session: Session | null
   practice: PracticeWord | null
   openPractice: (word: PracticeWord) => void
@@ -73,6 +77,8 @@ type Store = {
   removeList: (id: string) => void
   addWord: (word: Word) => void
   removeWord: (id: string) => void
+  toggleFavorite: (id: string) => void
+  markWorkbook: (id: string, times: number) => void
   downloadBackup: () => Promise<void>
   restoreBackup: (file: BackupFile) => Promise<void>
   wipeProgress: () => Promise<void>
@@ -136,6 +142,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<Settings | null>(null)
   const [stats, setStats] = useState<Stats>({ streak: 0, lastStudy: '', days: {} })
   const [newSeen, setNewSeen] = useState<Record<string, number>>({})
+  const [favorites, setFavorites] = useState<string[]>([])
+  const [workbook, setWorkbook] = useState<Record<string, number>>({})
   const [tab, setTab] = useState<Store['tab']>('today')
   const [session, setSession] = useState<Session | null>(null)
   const [practice, setPractice] = useState<PracticeWord | null>(null)
@@ -149,6 +157,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setSettings({ ...data.settings, speed: coerceSpeed(data.settings.speed) })
         setStats(data.stats)
         setNewSeen(data.newSeen)
+        setFavorites(data.favorites)
+        setWorkbook(data.workbook)
         applyTheme(data.settings.theme)
         setReady(true)
       })
@@ -297,6 +307,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     },
     stats,
     newSeen,
+    favorites,
+    workbook,
     tab,
     session,
     practice,
@@ -360,7 +372,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     removeWord: (id) => {
       setWords((current) => current.filter((word) => word.id !== id))
       setCards((current) => current.filter((card) => card.wordId !== id))
+      setFavorites((current) => {
+        if (!current.includes(id)) return current
+        const next = current.filter((item) => item !== id)
+        void saveFavorites(next)
+        return next
+      })
       void deleteWord(id)
+    },
+    toggleFavorite: (id) => {
+      setFavorites((current) => {
+        const next = current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
+        void saveFavorites(next)
+        return next
+      })
+    },
+    markWorkbook: (id, times) => {
+      setWorkbook((current) => {
+        const next = { ...current, [id]: times }
+        void saveWorkbook(next)
+        return next
+      })
     },
     downloadBackup: async () => {
       const data = await exportBackup()

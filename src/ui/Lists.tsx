@@ -23,13 +23,15 @@ export function Lists() {
   const [openWord, setOpenWord] = useState<string | null>(null)
   const rows = useRef(new Map<string, HTMLLIElement>())
 
-  const list = store.lists.find((item) => item.id === openId) ?? store.lists[0]
+  const fav = openId === 'fav'
+  const list = store.lists.find((item) => item.id === openId) ?? (fav ? undefined : store.lists[0])
+  const favoriteIds = useMemo(() => new Set(store.favorites), [store.favorites])
   const words = useMemo(() => {
     const q = query.trim().toLowerCase()
     return store.words
-      .filter((word) => word.listId === list?.id)
+      .filter((word) => (fav ? favoriteIds.has(word.id) : word.listId === list?.id))
       .filter((word) => !q || `${word.hanzi} ${word.pinyin} ${word.ru}`.toLowerCase().includes(q))
-  }, [store.words, list?.id, query])
+  }, [store.words, fav, favoriteIds, list?.id, query])
 
   useEffect(() => {
     setShown(60)
@@ -41,12 +43,12 @@ export function Lists() {
     if (node) revealOpened(node)
   }, [openWord])
 
-  if (!list) return null
-  const custom = !list.builtin
+  if (!fav && !list) return null
+  const custom = !!list && !list.builtin
 
   function hear(text: string) {
     unlockAudio()
-    void speak(text, store.settings.voice, store.settings.speed, list.id === 'tones' ? 'tones' : 'vocab')
+    void speak(text, store.settings.voice, store.settings.speed, list?.id === 'tones' ? 'tones' : 'vocab')
   }
 
   function takeWords(rows: unknown) {
@@ -59,7 +61,7 @@ export function Lists() {
       const example = item.example || {}
       const word: Word = {
         id: `c:${crypto.randomUUID()}`,
-        listId: list.id,
+        listId: list!.id,
         hanzi: item.hanzi.trim(),
         pinyin: normalizePinyin(String(item.pinyin || '')),
         ru: String(item.ru || '').trim(),
@@ -141,7 +143,7 @@ export function Lists() {
         const example = row.example || {}
         next.push({
           id: `c:${crypto.randomUUID()}`,
-          listId: list.id,
+          listId: list!.id,
           hanzi: row.hanzi.trim(),
           pinyin: normalizePinyin(String(row.pinyin || '')),
           ru: String(row.ru || '').trim(),
@@ -166,8 +168,12 @@ export function Lists() {
       <p className="eyebrow">колоды</p>
       <h1>От урока до HSK 6.</h1>
       <div className="list-switch">
+        <button type="button" className={fav ? 'chip on' : 'chip'} onClick={() => setOpenId('fav')}>
+          <b>Избранное</b>
+          <small>{store.favorites.length}</small>
+        </button>
         {store.lists.map((item) => (
-          <button key={item.id} type="button" className={item.id === list.id ? 'chip on' : 'chip'} onClick={() => setOpenId(item.id)}>
+          <button key={item.id} type="button" className={!fav && item.id === list?.id ? 'chip on' : 'chip'} onClick={() => setOpenId(item.id)}>
             <b>{item.name}</b>
             <small>{store.words.filter((word) => word.listId === item.id).length}</small>
           </button>
@@ -192,12 +198,18 @@ export function Lists() {
 
       <div className="block" data-art="scrolls">
         <div className="block-head">
-          <h2>{list.name}</h2>
-          <p>{list.description}</p>
+          <h2>{fav ? 'Избранное' : list!.name}</h2>
+          <p>{fav ? 'Слова и фразы, которые ты отметил звёздочкой.' : list!.description}</p>
         </div>
-        {list.id !== 'tones' && words.length > 0 && !query.trim() && (
-          <button type="button" className="primary" onClick={() => store.startDrill(list.id)}>
-            Все карточки · {store.words.filter((word) => word.listId === list.id && word.kind !== 'tone').length}
+        {fav && words.length === 0 && <p className="fine">В уроках нажми звёздочку у слова или фразы — они соберутся здесь.</p>}
+        {!fav && list!.id !== 'tones' && words.length > 0 && !query.trim() && (
+          <button type="button" className="primary" onClick={() => store.startDrill(list!.id)}>
+            Все карточки · {store.words.filter((word) => word.listId === list!.id && word.kind !== 'tone').length}
+          </button>
+        )}
+        {fav && words.length > 0 && !query.trim() && (
+          <button type="button" className="primary" onClick={() => store.startWords(words, 'Избранное')}>
+            Учить избранное · {words.length}
           </button>
         )}
         <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Найти в списке" />
@@ -222,6 +234,16 @@ export function Lists() {
                 <span>{word.ru}</span>
               </button>
               <span className="word-actions">
+                {pageOf(word.note) && <span className="page-mark">стр. {pageOf(word.note)}</span>}
+                <button
+                  type="button"
+                  className={favoriteIds.has(word.id) ? 'star on' : 'star'}
+                  aria-pressed={favoriteIds.has(word.id)}
+                  aria-label={favoriteIds.has(word.id) ? `Убрать ${word.hanzi} из избранного` : `В избранное: ${word.hanzi}`}
+                  onClick={() => store.toggleFavorite(word.id)}
+                >
+                  <StarIcon />
+                </button>
                 <DrawButton hanzi={word.hanzi} pinyin={word.pinyin} ru={word.ru} />
                 <button type="button" className="hear" aria-label={`Слушать ${word.hanzi}`} onClick={() => hear(word.hanzi)}>
                   <Speaker />
@@ -235,7 +257,7 @@ export function Lists() {
               {openWord === word.id && (
                 <div className="word-more">
                   <Phrase text={word.hanzi} onSpeak={hear} chips />
-                  {word.note && <p className="note">{word.note}</p>}
+                  {noteBody(word.note) && <p className="note">{noteBody(word.note)}</p>}
                   {word.example && (
                     <div className="example">
                       <div className="example-head">
@@ -260,14 +282,14 @@ export function Lists() {
             Ещё {Math.min(80, words.length - shown)} · всего {words.length}
           </button>
         )}
-        {custom && (
+        {custom && list && (
           <button type="button" className="text-btn danger" onClick={() => { store.removeList(list.id); setOpenId('hsk1') }}>
             Удалить список
           </button>
         )}
       </div>
 
-      {list.id !== 'tones' && (
+      {!fav && list && list.id !== 'tones' && (
         <div className="block" data-art="ink">
           <h2>Добавить слово</h2>
           <p>Иероглиф или пиньинь. Перевод, чтение и пример подберу сам.</p>
@@ -362,6 +384,28 @@ async function shrinkPhoto(file: File) {
   ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
   bitmap.close()
   return canvas.toDataURL('image/jpeg', 0.72)
+}
+
+function pageOf(note?: string) {
+  return note?.match(/Стр\.\s*(\d+)/)?.[1] ?? ''
+}
+
+function noteBody(note?: string) {
+  return note?.replace(/Стр\.\s*\d+\.?\s*/g, '').trim() ?? ''
+}
+
+function StarIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M12 3.2l2.4 5.1 5.6.7-4.1 3.8 1.1 5.5L12 15.8 7 18.3l1.1-5.5L4 9l5.6-.7L12 3.2z"
+        fill="currentColor"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
 }
 
 export function Speaker() {

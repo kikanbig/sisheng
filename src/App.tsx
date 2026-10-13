@@ -5,6 +5,7 @@ import { Today } from './ui/Today'
 import { Lists } from './ui/Lists'
 import { Dictionary } from './ui/Dictionary'
 import { Progress } from './ui/Progress'
+import { Workbook } from './ui/Workbook'
 import { PracticeHost } from './ui/Practice'
 import { useStore } from './store'
 
@@ -12,6 +13,7 @@ const TABS = [
   { id: 'today', label: 'Сегодня' },
   { id: 'lists', label: 'Списки' },
   { id: 'dict', label: 'Словарь' },
+  { id: 'workbook', label: 'Тетрадь' },
   { id: 'progress', label: 'Память' },
 ] as const
 
@@ -74,6 +76,7 @@ function Shell() {
         {store.tab === 'today' && <Today />}
         {store.tab === 'lists' && <Lists />}
         {store.tab === 'dict' && <Dictionary />}
+        {store.tab === 'workbook' && <Workbook />}
         {store.tab === 'progress' && <Progress />}
       </main>
       <nav className="tabs" style={{ ['--i' as string]: TABS.findIndex((tab) => tab.id === store.tab) }}>

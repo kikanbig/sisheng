@@ -91,13 +91,15 @@ export function getDb() {
 
 export async function loadAll() {
   const db = await getDb()
-  const [words, lists, srs, settings, stats, newSeen] = await Promise.all([
+  const [words, lists, srs, settings, stats, newSeen, favorites, workbook] = await Promise.all([
     db.getAll('words'),
     db.getAll('lists'),
     db.getAll('srs'),
     db.get('kv', 'settings') as Promise<Settings | undefined>,
     db.get('kv', 'stats') as Promise<{ streak: number; lastStudy: string; days: DayStats } | undefined>,
     db.get('kv', 'newSeen') as Promise<Record<string, number> | undefined>,
+    db.get('kv', 'favorites') as Promise<string[] | undefined>,
+    db.get('kv', 'workbook') as Promise<Record<string, number> | undefined>,
   ])
   return {
     words,
@@ -106,7 +108,19 @@ export async function loadAll() {
     settings: { ...defaultSettings(), ...(settings ?? {}) },
     stats: stats ?? { streak: 0, lastStudy: '', days: {} },
     newSeen: newSeen ?? {},
+    favorites: favorites ?? [],
+    workbook: workbook ?? {},
   }
+}
+
+export async function saveFavorites(ids: string[]) {
+  const db = await getDb()
+  await db.put('kv', ids, 'favorites')
+}
+
+export async function saveWorkbook(progress: Record<string, number>) {
+  const db = await getDb()
+  await db.put('kv', progress, 'workbook')
 }
 
 export async function saveSettings(settings: Settings) {

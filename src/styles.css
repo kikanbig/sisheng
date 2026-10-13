@@ -514,7 +514,7 @@ h2 { font-size: 1.05rem; letter-spacing: -0.03em; }
   transform: translateX(-50%);
   width: min(680px, calc(100% - 20px));
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 6px;
   padding: 6px;
   border-radius: 24px;
@@ -532,7 +532,7 @@ h2 { font-size: 1.05rem; letter-spacing: -0.03em; }
   top: 6px;
   bottom: 6px;
   left: 6px;
-  width: calc((100% - 30px) / 4);
+  width: calc((100% - 36px) / 5);
   border-radius: 18px;
   background: var(--deep);
   box-shadow: 0 10px 22px -10px rgba(20, 50, 40, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.18);
@@ -540,7 +540,7 @@ h2 { font-size: 1.05rem; letter-spacing: -0.03em; }
   transition: transform 0.5s var(--ease-spring);
 }
 :root.dark .tabs::before { box-shadow: 0 0 24px -4px var(--gold-glow), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
-.tab { position: relative; z-index: 1; border: 0; background: transparent; padding: 12px 4px; white-space: nowrap; color: var(--muted); font-weight: 600; }
+.tab { position: relative; z-index: 1; border: 0; background: transparent; padding: 12px 2px; white-space: nowrap; color: var(--muted); font-weight: 600; font-size: 0.82rem; }
 .tab.on { color: var(--deep-ink); }
 
 .session {
@@ -1085,6 +1085,44 @@ input:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 4px co
 .word-list > li.open .word-main .hanzi { color: var(--cinnabar); }
 .word-more { flex: 1 0 100%; display: grid; gap: 10px; justify-items: center; padding: 4px 0 8px; }
 .word-actions { display: flex; align-items: center; gap: 4px; flex: none; }
+.page-mark {
+  font-size: 0.58rem;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  opacity: 0.7;
+  font-weight: 500;
+  padding-right: 2px;
+}
+.star {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--muted) 55%, transparent);
+  display: grid;
+  place-items: center;
+  flex: none;
+  padding: 0;
+}
+.star svg { width: 18px; height: 18px; }
+.star.on { color: var(--gold); }
+.workbook-sum { margin: 0; color: var(--muted); font-variant-numeric: tabular-nums; }
+.workbook-group { display: grid; gap: 8px; }
+.workbook-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.workbook-rows li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+.workbook-rows li.done { opacity: 0.55; }
+.workbook-hint { color: var(--muted); font-size: 0.78rem; }
+.workbook-count { margin-left: auto; font-variant-numeric: tabular-nums; font-size: 0.78rem; color: var(--muted); }
+.workbook-meta { margin: 0; text-align: center; color: var(--muted); font-size: 0.85rem; }
+.workbook-now { color: var(--cinnabar); }
 .hear {
   width: 36px;
   height: 36px;
