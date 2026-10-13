@@ -106,26 +106,90 @@ function playUrl(url: string, mine: number): Promise<boolean> {
 }
 
 function deviceSpeak(text: string, speed: Speed, phrase: boolean, mine: number) {
-  return new Promise<boolean>((resolve, reject) => {
+  return new Promise<boolean>((resolve) => {
     if (mine !== ticket || typeof speechSynthesis === 'undefined') {
       resolve(false)
       return
     }
+    const audio = element()
+    audio.loop = false
+    audio.pause()
     const utter = new SpeechSynthesisUtterance(text)
     const voices = speechSynthesis.getVoices()
     const voice = voices.find((item) => item.lang.toLowerCase().startsWith('zh'))
     if (voice) utter.voice = voice
     utter.lang = 'zh-CN'
     utter.rate = Math.max(0.55, DEVICE_RATE[speed] - (phrase ? 0.14 : 0))
-    utter.onend = () => resolve(mine === ticket)
-    utter.onerror = () => reject(new Error('speech-error'))
+    let settled = false
+    const finish = (ok: boolean) => {
+      if (settled) return
+      settled = true
+      window.clearInterval(pulse)
+      resolve(ok && mine === ticket)
+    }
+    utter.onend = () => finish(true)
+    utter.onerror = () => finish(false)
+    const pulse =
+      [...text].length > 40
+        ? window.setInterval(() => {
+            if (!speechSynthesis.speaking) return
+            speechSynthesis.pause()
+            speechSynthesis.resume()
+          }, 8000)
+        : 0
     window.setTimeout(() => {
       if (mine !== ticket) {
-        resolve(false)
+        finish(false)
         return
       }
+      speechSynthesis.resume()
       speechSynthesis.speak(utter)
     }, 40)
+  })
+}
+
+function speechPieces(text: string) {
+  const clean = text.replace(/\s+/g, ' ').trim()
+  if ([...clean].length <= 80) return [clean]
+  const sentences = clean.split(/(?<=[。！？!?…；;])/u).map((part) => part.trim()).filter(Boolean)
+  const out: string[] = []
+  for (const sentence of sentences.length ? sentences : [clean]) {
+    if ([...sentence].length <= 80) {
+      out.push(sentence)
+      continue
+    }
+    let buffer = ''
+    for (const part of sentence.split(/(?<=[，,、])/u)) {
+      if (buffer && [...(buffer + part)].length > 80) {
+        out.push(buffer.trim())
+        buffer = part
+      } else buffer += part
+    }
+    if (buffer.trim()) out.push(buffer.trim())
+  }
+  return out.length ? out : [clean.slice(0, 80)]
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number) {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error('timeout')), ms)
+    promise.then(resolve, reject).finally(() => window.clearTimeout(timer))
+  })
+}
+
+function waitEnded(mine: number) {
+  const audio = element()
+  if (mine !== ticket || audio.paused || audio.ended) return Promise.resolve()
+  return new Promise<void>((resolve) => {
+    const finish = () => {
+      audio.removeEventListener('ended', finish)
+      window.clearInterval(watch)
+      resolve()
+    }
+    const watch = window.setInterval(() => {
+      if (mine !== ticket || audio.paused) finish()
+    }, 200)
+    audio.addEventListener('ended', finish)
   })
 }
 
@@ -155,6 +219,7 @@ function loadUrl(key: string, text: string, voiceId: string, speed: Speed, mode:
     })
     if (!response.ok) throw new Error(String(response.status))
     const blob = await response.blob()
+    if (blob.size < 200) throw new Error('empty-audio')
     if (memory.has(key)) return memory.get(key)
     const url = URL.createObjectURL(blob)
     memory.set(key, url)
@@ -168,9 +233,54 @@ function loadUrl(key: string, text: string, voiceId: string, speed: Speed, mode:
 export function prefetch(text: string, voiceId: string, speed: Speed, mode: 'tones' | 'vocab' = 'vocab') {
   const clean = text.trim()
   if (!clean) return
-  const { key } = cacheKey(clean, voiceId, speed, mode)
+  const first = speechPieces(clean)[0]
+  const { key } = cacheKey(first, voiceId, speed, mode)
   if (memory.has(key)) return
-  void loadUrl(key, clean, voiceId, speed, mode, null).catch(() => undefined)
+  void loadUrl(key, first, voiceId, speed, mode, null).catch(() => undefined)
+}
+
+async function speakPiece(
+  text: string,
+  voiceId: string,
+  speed: Speed,
+  mode: 'tones' | 'vocab',
+  mine: number,
+): Promise<SpeakResult> {
+  const { phrase, key } = cacheKey(text, voiceId, speed, mode)
+  const known = memory.get(key)
+  if (known) {
+    if (await playUrl(known, mine)) {
+      await waitEnded(mine)
+      return mine === ticket ? 'neural' : 'miss'
+    }
+    return (await deviceSpeak(text, speed, phrase, mine)) ? 'device' : 'miss'
+  }
+  // iOS пускает звук только из касания, а загрузка его прерывает: будим плеер тишиной сразу
+  unlockAudio()
+  let usedDevice = false
+  let deviceDone = Promise.resolve(false)
+  const pending = loadUrl(key, text, voiceId, speed, mode, mine)
+  const timer = window.setTimeout(() => {
+    if (mine !== ticket || usedDevice) return
+    usedDevice = true
+    deviceDone = deviceSpeak(text, speed, phrase, mine)
+  }, 800)
+  try {
+    const url = await withTimeout(pending, 6500)
+    if (mine !== ticket) return 'miss'
+    if (!usedDevice) {
+      window.clearTimeout(timer)
+      if (url && (await playUrl(url, mine))) {
+        await waitEnded(mine)
+        return mine === ticket ? 'neural' : 'miss'
+      }
+    }
+  } catch {
+    window.clearTimeout(timer)
+    if (mine !== ticket) return 'miss'
+  }
+  if (!usedDevice) return (await deviceSpeak(text, speed, phrase, mine)) ? 'device' : 'miss'
+  return (await deviceDone) ? 'device' : 'miss'
 }
 
 export async function speak(
@@ -181,25 +291,16 @@ export async function speak(
 ): Promise<SpeakResult> {
   const clean = text.trim()
   if (!clean) return 'miss'
+  if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel()
   const mine = ++ticket
-  const { phrase, key } = cacheKey(clean, voiceId, speed, mode)
-  const known = memory.get(key)
-  if (known) {
-    const played = await playUrl(known, mine)
-    return played ? 'neural' : 'miss'
+  let result: SpeakResult = 'miss'
+  for (const piece of speechPieces(clean)) {
+    if (mine !== ticket) return result
+    const part = await speakPiece(piece, voiceId, speed, mode, mine)
+    if (part === 'neural') result = 'neural'
+    else if (part === 'device' && result !== 'neural') result = 'device'
   }
-  // iOS пускает звук только из касания, а загрузка его прерывает: будим плеер тишиной сразу
-  unlockAudio()
-  try {
-    const url = await loadUrl(key, clean, voiceId, speed, mode, mine)
-    if (mine !== ticket || !url) return 'miss'
-    const played = await playUrl(url, mine)
-    return played ? 'neural' : 'miss'
-  } catch {
-    if (mine !== ticket) return 'miss'
-    const played = await deviceSpeak(clean, speed, phrase, mine).catch(() => false)
-    return played ? 'device' : 'miss'
-  }
+  return result
 }
 
 export function pickVoice(preferred: string, mix: boolean): string {

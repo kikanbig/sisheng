@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { speak, unlockAudio } from '../lib/audio'
+import { revealOpened } from '../lib/reveal'
 import { normalizePinyin } from '../lib/pinyin'
 import { useStore } from '../store'
 import type { Word } from '../types'
@@ -20,6 +21,7 @@ export function Lists() {
   const [error, setError] = useState('')
   const [shown, setShown] = useState(60)
   const [openWord, setOpenWord] = useState<string | null>(null)
+  const rows = useRef(new Map<string, HTMLLIElement>())
 
   const list = store.lists.find((item) => item.id === openId) ?? store.lists[0]
   const words = useMemo(() => {
@@ -32,6 +34,12 @@ export function Lists() {
   useEffect(() => {
     setShown(60)
   }, [openId, query])
+
+  useLayoutEffect(() => {
+    if (!openWord) return
+    const node = rows.current.get(openWord)
+    if (node) revealOpened(node)
+  }, [openWord])
 
   if (!list) return null
   const custom = !list.builtin
@@ -195,7 +203,14 @@ export function Lists() {
         <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Найти в списке" />
         <ul className="word-list">
           {words.slice(0, shown).map((word) => (
-            <li key={word.id} className={openWord === word.id ? 'open' : undefined}>
+            <li
+              key={word.id}
+              ref={(node) => {
+                if (node) rows.current.set(word.id, node)
+                else rows.current.delete(word.id)
+              }}
+              className={openWord === word.id ? 'open' : undefined}
+            >
               <button
                 type="button"
                 className="word-main"

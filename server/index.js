@@ -111,7 +111,7 @@ function synthesize(text, voice, rate) {
       const tts = new EdgeTTS(text, voice, { rate, volume: '+0%', pitch: '+0Hz' })
       const result = await Promise.race([
         tts.synthesize(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 12000)),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000)),
       ])
       const buffer = Buffer.from(await result.audio.arrayBuffer())
       if (buffer.length < 200) throw new Error('empty-audio')

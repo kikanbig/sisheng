@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { revealOpened } from '../lib/reveal'
 import { speak, unlockAudio } from '../lib/audio'
 import {
   cardMeaning,
@@ -33,6 +34,7 @@ export function Dictionary() {
   const [progress, setProgress] = useState<number | null>(null)
   const [fresh, setFresh] = useState<string | null>(null)
   const latest = useRef(0)
+  const rows = useRef(new Map<string, HTMLLIElement>())
 
   async function install() {
     setError('')
@@ -89,6 +91,12 @@ export function Dictionary() {
     }, 60)
     return () => clearTimeout(timer)
   }, [query, status?.ready])
+
+  useLayoutEffect(() => {
+    if (!open) return
+    const node = rows.current.get(open)
+    if (node) revealOpened(node)
+  }, [open])
 
   function hear(text: string) {
     unlockAudio()
@@ -170,7 +178,14 @@ export function Dictionary() {
             const key = `${hit.hanzi}|${hit.pinyin}`
             const isOpen = open === key
             return (
-              <li key={key} className={isOpen ? 'open' : undefined}>
+              <li
+                key={key}
+                ref={(node) => {
+                  if (node) rows.current.set(key, node)
+                  else rows.current.delete(key)
+                }}
+                className={isOpen ? 'open' : undefined}
+              >
                 <button type="button" className="dict-row" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : key)}>
                   <b className="hanzi">{hit.hanzi}</b>
                   <span>

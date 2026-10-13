@@ -959,6 +959,7 @@ h2 { font-size: 1.05rem; letter-spacing: -0.03em; }
   text-align: left;
 }
 .dict-row .hanzi { font-size: 1.7rem; line-height: 1.15; }
+.dict-list > li.open { scroll-margin-top: 88px; }
 .dict-list > li.open .dict-row .hanzi { color: var(--cinnabar); }
 .dict-row > span { display: grid; gap: 2px; min-width: 0; }
 .dict-row small { color: var(--muted); font-size: 0.86rem; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
@@ -1080,6 +1081,7 @@ input:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 4px co
   padding: 4px 0;
   cursor: pointer;
 }
+.word-list > li.open { scroll-margin: 8px; }
 .word-list > li.open .word-main .hanzi { color: var(--cinnabar); }
 .word-more { flex: 1 0 100%; display: grid; gap: 10px; justify-items: center; padding: 4px 0 8px; }
 .word-actions { display: flex; align-items: center; gap: 4px; flex: none; }
